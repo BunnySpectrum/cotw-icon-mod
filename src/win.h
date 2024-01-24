@@ -61,9 +61,4 @@ typedef struct bitmapFileHeader_s{
     uint32_t offBits; //byte offset to bitmap data    
 } bitmapFileHeader_t;
 
-typedef
-
-
-
-
 #endif

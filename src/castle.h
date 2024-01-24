@@ -1,3 +1,6 @@
+#ifndef _CASTLE_H_
+#define _CASTLE_H_
+
 #include <stdint.h>
 
 #include "win.h"
@@ -41,3 +44,5 @@ typedef struct castleResources_s{
 
 #define GROUP_ICON_ID_CUBE 216
 #define ICON_ENTRY_CUBE_COLOR 1
+
+#endif
