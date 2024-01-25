@@ -1,16 +1,17 @@
 CC=gcc
 CFLAGS=-I.
-OBJ = main
+OBJ = main.o castle.o
+
 VPATH = src
 
 %.asm: %.c
 	$(CC) -S -fverbose-asm -g -O2 $< -o build/$*.asm
 
-%.o: %.c
-	$(CC) -c $< -o build/$@
+build/%.o: %.c
+	$(CC) -c $< -o $@
 
-build: $(OBJ).o $(OBJ).c $(OBJ).asm
-	$(CC) -o build/pgrm_$(OBJ) build/$(OBJ).o
+pgrm.bin: $(addprefix build/,$(OBJ))
+	$(CC) -o build/$@ $^
 
 clean:
-	rm -f build/pgrm_main build/$(OBJ).o build/$(OBJ).asm
+	rm -f build/pgrm.bin build/*.o build/*.asm

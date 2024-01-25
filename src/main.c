@@ -241,6 +241,8 @@ void replace_ico(FILE* exeFile, FILE* iconFile, groupIconDirEntry_t dirEntry, ca
 
 
 int main(){ 
+    castle_init();
+
     FILE *fp;
 
 

@@ -2,15 +2,7 @@
 
 
 
-typedef struct{
-    uint8_t signature[2]; // [0x4D, 0x5A] ([77d, 90d], "MZ")
-    uint16_t tableOffset;
-    uint32_t windowsOffset;
 
-} dosHeader_t;
-
-#define DOS_OFFSET_TABLE 0x18
-#define DOS_OFFSET_WINDOWS 0x3C
 
 
 typedef struct{

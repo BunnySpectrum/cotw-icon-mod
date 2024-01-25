@@ -1,9 +1,16 @@
 #ifndef _CASTLE_H_
 #define _CASTLE_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdint.h>
 
 #include "win.h"
+
+
+uint8_t castle_init(void);
 
 /*
 34 GROUP_CURSOR at 0x542
@@ -45,4 +52,9 @@ typedef struct castleResources_s{
 #define GROUP_ICON_ID_CUBE 216
 #define ICON_ENTRY_CUBE_COLOR 1
 
+
+#ifdef __cplusplus
+}
 #endif
+
+#endif //castle.h include guard
