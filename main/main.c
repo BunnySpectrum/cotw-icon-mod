@@ -10,16 +10,6 @@
 #include "io.h"
 
 
-
-
-
-
-
-
-
-
-
-
 //iconIndex is relative to the dirEntry
 void write_ico(FILE* exeFile, FILE* fileHandle, groupIconDirEntry_t dirEntry, castleResourceType_t iconResource, nameInfo_t iconNameInfo){
     // little endian file
@@ -110,8 +100,12 @@ int main(){
     dosHeader_t dosHeader;
     windowsHeader_t winHeader;
     resourceTable_t resourceTable;
-
-    fp = fopen("CASTLE1.EXE", "rb");
+// FIXME add arguments for where files should be
+    fp = fopen("misc/CASTLE1.EXE", "rb");
+    if (!fp){
+        printf("Unable to open CASTLE1.EXE!");
+        return 0;
+    }
 
     dos_read_magic(fp, &dosHeader);
     dos_read_table_offset(fp, &dosHeader);
@@ -284,7 +278,7 @@ int main(){
         // }
     }
 
-    iconFile = fopen("player_init.ico", "wb");
+    iconFile = fopen("misc/player_init.ico", "wb");
     //get dirEntry
     get_nameinfo_for_resource(fp, castleResources.groupIcon, GROUP_ICON_ID_PLAYER_FEM, &groupIconNameInfo);
     access_group_icon(fp, groupIconNameInfo.rnOffset << 4, &groupIconDir);
@@ -304,13 +298,13 @@ int main(){
     
 
     FILE* newExe;
-    newExe = fopen("patch.EXE", "rb+");
+    newExe = fopen("misc/patch.EXE", "rb+");
     if (!newExe){
         printf("Unable to open newExe!");
         return 0;
     }
     
-    iconFile = fopen("bun2.ico", "rb");
+    iconFile = fopen("misc/bun2.ico", "rb");
     // iconFile = fopen("icons/group_216_entry_1.ico", "rb");
     if (!iconFile){
         printf("Unable to open iconFIle!");
