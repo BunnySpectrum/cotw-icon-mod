@@ -1,6 +1,6 @@
 CC=gcc
 CFLAGS=-I.
-OBJ = main.o castle.o
+OBJ = main.o castle.o io.o win.o
 
 VPATH = src
 

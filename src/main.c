@@ -7,161 +7,18 @@
 #include "main.h"
 #include "win.h"
 #include "castle.h"
-
-//TODO replace return code w/ enum
-uint8_t read_byte(FILE* fileHandle, uint8_t* result){
-    return WIN_CHAR_LEN == fread(result, sizeof(uint8_t), WIN_CHAR_LEN, fileHandle);
-}
-
-uint8_t read_word(FILE* fileHandle, uint16_t* result){
-    uint8_t buf[WIN_WORD_LEN];
-    uint8_t numRead;
-    
-    numRead = fread(buf, sizeof(uint8_t), WIN_WORD_LEN, fileHandle);
-    if (numRead < WIN_WORD_LEN){
-        return 0;
-    }
-    *result = buf[0] | (buf[1] << 8);
-
-    return 1;
-}
-
-uint8_t read_dword(FILE* fileHandle, uint32_t* result){
-    uint8_t buf[WIN_DWORD_LEN];
-    uint8_t numRead;
-    
-    numRead = fread(buf, sizeof(uint8_t), WIN_DWORD_LEN, fileHandle);
-    if (numRead < WIN_DWORD_LEN){
-        return 0;
-    }
-    *result = buf[0] | (buf[1] << 8) | (buf[2] << 16) | (buf[3] << 24);
-
-    return 1;
-}
+#include "io.h"
 
 
-uint8_t dos_read_magic(FILE* fileHandle, dosHeader_t* header){
-    printf("Reading magic number\n");
-
-    fseek(fileHandle, 0, SEEK_SET);
-    read_byte(fileHandle, &header->signature[0]);
-    read_byte(fileHandle, &header->signature[1]);
-    return 1;
-}
-
-uint8_t dos_read_table_offset(FILE* fileHandle, dosHeader_t* header){
-    //printf("Reading table offset\n");
-
-    fseek(fileHandle, DOS_OFFSET_TABLE, SEEK_SET);
-    read_word(fileHandle, &header->tableOffset);
-    return 1;
-}
-
-uint8_t dos_read_windows_offset(FILE* fileHandle, dosHeader_t* header){
-    //printf("Reading Windows header offset\n");
-
-    fseek(fileHandle, DOS_OFFSET_WINDOWS, SEEK_SET);
-    read_dword(fileHandle, &header->windowsOffset);
-    return 1;
-}
 
 
-uint8_t win_read_magic(FILE* fileHandle, windowsHeader_t* header, uint32_t baseAddress){
-    //printf("Reading magic number\n");
-
-    fseek(fileHandle, baseAddress, SEEK_SET);
-    read_byte(fileHandle, &header->signature[0]);
-    read_byte(fileHandle, &header->signature[1]);
-    return 1;
-}
-
-uint8_t win_read_resource_table_offset(FILE* fileHandle, windowsHeader_t* header, uint32_t baseAddress){
-    fseek(fileHandle, baseAddress + WIN_OFFSET_RESOURCE_TABLE, SEEK_SET);
-    read_word(fileHandle, &header->resourceTableOffset);
-    return 1;
-}
-
-uint8_t rcs_table_read_shift(FILE* fileHandle, resourceTable_t* table){
-    fseek(fileHandle, table->baseAddress + 0, SEEK_SET);
-    read_word(fileHandle, &table->rcsAlignShift);
-    return 1;
-}
-
-uint8_t rt_read_type_id(FILE* fileHandle, typeInfoList_t* typeInfoList){
-    fseek(fileHandle, typeInfoList->address + 0, SEEK_SET);
-    read_word(fileHandle, &typeInfoList->typeInfo.rtTypeID);
-    return 1;
-}
-
-uint8_t rt_read_resource_count(FILE* fileHandle, typeInfoList_t* typeInfoList){
-    fseek(fileHandle, typeInfoList->address + 0x2, SEEK_SET);
-    read_word(fileHandle, &typeInfoList->typeInfo.rtResourceCount);
-    return 1;
-}
-
-uint8_t read_nameinfo(FILE* fileHandle, uint32_t address, nameInfo_t* nameInfo){
-    fseek(fileHandle, address, SEEK_SET);
-    read_word(fileHandle, &nameInfo->rnOffset);
-    read_word(fileHandle, &nameInfo->rnLength);
-    read_word(fileHandle, &nameInfo->rnFlags);
-    read_word(fileHandle, &nameInfo->rnID);
-    return 1;
-}
-
-uint8_t get_nameinfo_for_resource(FILE* fileHandle, castleResourceType_t castleResourceType, uint16_t index, nameInfo_t* nameInfo){
-    uint32_t address = castleResourceType.nameInfoAddress + index*NAMEINFO_BYTE_LENGTH;
-    read_nameinfo(fileHandle, address, nameInfo);
-    return 1;
-}
-
-void print_nameinfo(nameInfo_t nameInfo){
-    printf("Offset: %#x\n", nameInfo.rnOffset);
-    printf("Length: %#x\n", nameInfo.rnLength);
-    printf("Flags: %#x\n", nameInfo.rnFlags);
-    printf("ID: %#x\n", nameInfo.rnID);
-}
 
 
-void access_group_icon(FILE* fileHandle, uint32_t address, groupIconDir_t* record){
-    fseek(fileHandle, address, SEEK_SET);
-    read_word(fileHandle, &record->rsvd);
-    read_word(fileHandle, &record->type);
-    read_word(fileHandle, &record->count);
-    record->entryAddress = (address + 3*WIN_WORD_LEN);
-
-}
-
-void print_group_icon_dir(groupIconDir_t record){
-    printf("Rsvd: %#x\n", record.rsvd);
-    printf("Type: %#x\n", record.type);
-    printf("Count: %#x\n", record.count);
-    printf("Entries address: %#x\n", record.entryAddress);
-}
 
 
-void access_group_icon_entry(FILE* fileHandle, uint32_t address, uint16_t index, groupIconDirEntry_t* record){
-    fseek(fileHandle, address + index*ICON_DIR_ENTRY_BYTE_LENGTH, SEEK_SET);
-    read_byte(fileHandle, &record->width);
-    read_byte(fileHandle, &record->height);
-    read_byte(fileHandle, &record->colorCount);
-    read_byte(fileHandle, &record->rsvd);
-    read_word(fileHandle, &record->planes);    
-    read_word(fileHandle, &record->bitCount);
-    read_dword(fileHandle, &record->bytesInRes);
-    read_word(fileHandle, &record->id);    
 
-}
 
-void print_group_icon_dir_entry(groupIconDirEntry_t record){
-    printf("Width: %#x\n", record.width);
-    printf("Height: %#x\n", record.height);
-    printf("Color count: %#x\n", record.colorCount); 
-    printf("Rsvd: %#x\n", record.rsvd);
-    printf("Planes: %#x\n", record.planes);
-    printf("Bit count: %#x\n", record.bitCount);
-    printf("Bytes in res: %#x\n", record.bytesInRes);
-    printf("Id: %#x\n", record.id);
-}
+
 
 //iconIndex is relative to the dirEntry
 void write_ico(FILE* exeFile, FILE* fileHandle, groupIconDirEntry_t dirEntry, castleResourceType_t iconResource, nameInfo_t iconNameInfo){

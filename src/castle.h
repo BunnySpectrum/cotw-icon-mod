@@ -52,6 +52,7 @@ typedef struct castleResources_s{
 #define GROUP_ICON_ID_CUBE 216
 #define ICON_ENTRY_CUBE_COLOR 1
 
+uint8_t get_nameinfo_for_resource(FILE* fileHandle, castleResourceType_t castleResourceType, uint16_t index, nameInfo_t* nameInfo);
 
 #ifdef __cplusplus
 }
