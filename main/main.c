@@ -3,12 +3,16 @@
 #include <stdint.h>
 #include <inttypes.h>
 #include <stdlib.h>
+#include <errno.h>
 
 #include "main.h"
 #include "win.h"
 #include "castle.h"
 #include "io.h"
 
+
+#define MAIN_OK 1
+#define MAIN_ERR 0
 
 //iconIndex is relative to the dirEntry
 void write_ico(FILE* exeFile, FILE* fileHandle, groupIconDirEntry_t dirEntry, castleResourceType_t iconResource, nameInfo_t iconNameInfo){
@@ -86,9 +90,29 @@ void replace_ico(FILE* exeFile, FILE* iconFile, groupIconDirEntry_t dirEntry, ca
 
 }
 
+uint8_t parse_args(int argc, char* argv[], char** dir){
+    if (argc != 2){
+        return MAIN_ERR;
+    }
 
-int main(){ 
-    castle_init();
+    *dir = argv[1];
+    return MAIN_OK;
+}
+
+
+int main(int argc, char* argv[]){ 
+    char* workingDir;
+    char* filePath;
+
+    if (MAIN_OK != parse_args(argc, argv, &workingDir)){
+        printf("No working directory specified. Argc = %d\n", argc);
+        printf("Usage: %s path/to/exe/dir\n", argv[0]);
+        return 0;
+    }
+    printf("Working dir: %s\n", workingDir);
+    // return 0;
+
+
 
     FILE *fp;
 
@@ -100,12 +124,19 @@ int main(){
     dosHeader_t dosHeader;
     windowsHeader_t winHeader;
     resourceTable_t resourceTable;
-// FIXME add arguments for where files should be
-    fp = fopen("misc/CASTLE1.EXE", "rb");
+
+    if(-1 == asprintf(&filePath, "%s/CASTLE1.EXE", workingDir)){
+        printf("Unable allocate string for %s/CASTLE1.EXE\n", workingDir);
+        return 0; 
+    }
+
+    fp = fopen(filePath, "rb");
+    free(filePath);
     if (!fp){
-        printf("Unable to open CASTLE1.EXE!");
+        perror("Unable to open CASTLE1.EXE!");
         return 0;
     }
+
 
     dos_read_magic(fp, &dosHeader);
     dos_read_table_offset(fp, &dosHeader);
@@ -278,7 +309,19 @@ int main(){
         // }
     }
 
-    iconFile = fopen("misc/player_init.ico", "wb");
+    if(-1 == asprintf(&filePath, "%s/player_init.ico", workingDir)){
+        printf("Unable allocate string for %s/player_init.ico\n", workingDir);
+        return 0; 
+    }
+
+    iconFile = fopen(filePath, "wb");
+    free(filePath);
+    if (!iconFile){
+        perror("Unable to create player_init.ico");
+        return 0;
+    }
+
+
     //get dirEntry
     get_nameinfo_for_resource(fp, castleResources.groupIcon, GROUP_ICON_ID_PLAYER_FEM, &groupIconNameInfo);
     access_group_icon(fp, groupIconNameInfo.rnOffset << 4, &groupIconDir);
@@ -297,17 +340,29 @@ int main(){
     print_group_icon_dir_entry(groupIconDirEntry);
     
 
+    if(-1 == asprintf(&filePath, "%s/patch.EXE", workingDir)){
+        printf("Unable allocate string for %s/patch.EXE\n", workingDir);
+        return 0; 
+    }
+
     FILE* newExe;
-    newExe = fopen("misc/patch.EXE", "rb+");
+    newExe = fopen(filePath, "rb+");
+    free(filePath);
     if (!newExe){
-        printf("Unable to open newExe!");
+        perror("Unable to open patch.EXE!");
         return 0;
     }
     
-    iconFile = fopen("misc/bun2.ico", "rb");
+    if(-1 == asprintf(&filePath, "%s/bun2.ico", workingDir)){
+        printf("Unable allocate string for %s/bun2.ico\n", workingDir);
+        return 0; 
+    }
+
+    iconFile = fopen(filePath, "rb");
+    free(filePath);
     // iconFile = fopen("icons/group_216_entry_1.ico", "rb");
     if (!iconFile){
-        printf("Unable to open iconFIle!");
+        perror("Unable to open bun2.ico!");
         return 0;
     }
     
@@ -364,6 +419,7 @@ int main(){
 
 
     fclose(fp);
+    fclose(newExe);
 
 
 

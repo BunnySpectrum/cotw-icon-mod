@@ -136,7 +136,7 @@ build: $(PATH_Build)pgrm.$(TARGET_EXTENSION)
 
 .PHONY: run
 run: build
-	./$(PATH_Build)pgrm.$(TARGET_EXTENSION)
+	./$(PATH_Build)pgrm.$(TARGET_EXTENSION) ./misc
 
 
 
