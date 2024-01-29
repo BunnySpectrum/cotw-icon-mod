@@ -90,26 +90,30 @@ void replace_ico(FILE* exeFile, FILE* iconFile, groupIconDirEntry_t dirEntry, ca
 
 }
 
-uint8_t parse_args(int argc, char* argv[], char** dir){
-    if (argc != 2){
+uint8_t parse_args(int argc, char* argv[], char** exePath, char** iconPath){
+    if (argc != 3){
         return MAIN_ERR;
     }
 
-    *dir = argv[1];
+    *exePath = argv[1];
+    *iconPath = argv[2];
+
     return MAIN_OK;
+    // TODO
+    // dry-run mode
 }
 
 
-int main(int argc, char* argv[]){ 
-    char* workingDir;
-    char* filePath;
+int main(int argc, char* argv[]){
+    char* exePath;
+    char* iconPath;
 
-    if (MAIN_OK != parse_args(argc, argv, &workingDir)){
-        printf("No working directory specified. Argc = %d\n", argc);
-        printf("Usage: %s path/to/exe/dir\n", argv[0]);
+    if (MAIN_OK != parse_args(argc, argv, &exePath, &iconPath)){
+        printf("Incorrect number of arguments. Argc = %d\n", argc);
+        printf("Usage: %s path/to/exe path/to/icon\n", argv[0]);
         return 0;
     }
-    printf("Working dir: %s\n", workingDir);
+    printf("Path to EXE: %s\n", exePath);
     // return 0;
 
 
@@ -125,15 +129,11 @@ int main(int argc, char* argv[]){
     windowsHeader_t winHeader;
     resourceTable_t resourceTable;
 
-    if(-1 == asprintf(&filePath, "%s/CASTLE1.EXE", workingDir)){
-        printf("Unable allocate string for %s/CASTLE1.EXE\n", workingDir);
-        return 0; 
-    }
 
-    fp = fopen(filePath, "rb");
-    free(filePath);
+    fp = fopen(exePath, "rb+");
+    printf("EXE: %s\n", exePath);
     if (!fp){
-        perror("Unable to open CASTLE1.EXE!");
+        perror("Unable to open EXE.");
         return 0;
     }
 
@@ -309,17 +309,18 @@ int main(int argc, char* argv[]){
         // }
     }
 
-    if(-1 == asprintf(&filePath, "%s/player_init.ico", workingDir)){
-        printf("Unable allocate string for %s/player_init.ico\n", workingDir);
-        return 0; 
-    }
+    
+    // if(-1 == asprintf(&filePath, "%s/player_init.ico", workingDir)){
+    //     printf("Unable allocate string for %s/player_init.ico\n", workingDir);
+    //     return 0; 
+    // }
 
-    iconFile = fopen(filePath, "wb");
-    free(filePath);
-    if (!iconFile){
-        perror("Unable to create player_init.ico");
-        return 0;
-    }
+    // iconFile = fopen(filePath, "wb");
+    // free(filePath);
+    // if (!iconFile){
+    //     perror("Unable to create player_init.ico");
+    //     return 0;
+    // }
 
 
     //get dirEntry
@@ -333,41 +334,38 @@ int main(int argc, char* argv[]){
     get_nameinfo_for_resource(fp, castleResources.icon, groupIconDirEntry.id - 1, &iconNameInfo);
 
     //write 
-    write_ico(fp, iconFile, groupIconDirEntry, castleResources.icon, iconNameInfo);
-    fclose(iconFile);
+    // write_ico(fp, iconFile, groupIconDirEntry, castleResources.icon, iconNameInfo);
+    // fclose(iconFile);
 
-    printf("Player\n");
-    print_group_icon_dir_entry(groupIconDirEntry);
+    // printf("Player\n");
+    // print_group_icon_dir_entry(groupIconDirEntry);
+    
     
 
-    if(-1 == asprintf(&filePath, "%s/patch.EXE", workingDir)){
-        printf("Unable allocate string for %s/patch.EXE\n", workingDir);
-        return 0; 
-    }
+    // if(-1 == asprintf(&filePath, "%s/patch.EXE", workingDir)){
+    //     printf("Unable allocate string for %s/patch.EXE\n", workingDir);
+    //     return 0; 
+    // }
 
-    FILE* newExe;
-    newExe = fopen(filePath, "rb+");
-    free(filePath);
-    if (!newExe){
-        perror("Unable to open patch.EXE!");
-        return 0;
-    }
+    // FILE* newExe;
+    // newExe = fopen(filePath, "rb+");
+    // free(filePath);
+    // if (!newExe){
+    //     perror("Unable to open patch.EXE!");
+    //     return 0;
+    // }
     
-    if(-1 == asprintf(&filePath, "%s/bun2.ico", workingDir)){
-        printf("Unable allocate string for %s/bun2.ico\n", workingDir);
-        return 0; 
-    }
 
-    iconFile = fopen(filePath, "rb");
-    free(filePath);
+    iconFile = fopen(iconPath, "rb");
+    printf("Icon: %s\n", iconPath);
     // iconFile = fopen("icons/group_216_entry_1.ico", "rb");
     if (!iconFile){
-        perror("Unable to open bun2.ico!");
+        perror("Unable to open icon!");
         return 0;
     }
     
-    replace_ico(newExe, iconFile, groupIconDirEntry, castleResources.icon, iconNameInfo);
-    fclose(newExe);
+    replace_ico(fp, iconFile, groupIconDirEntry, castleResources.icon, iconNameInfo);
+
 
     // get_nameinfo_for_resource(fp, castleResources.icon, 0, &nameInfo);
     // printf("Icon 0\n");
@@ -419,7 +417,7 @@ int main(int argc, char* argv[]){
 
 
     fclose(fp);
-    fclose(newExe);
+    // fclose(newExe);
 
 
 

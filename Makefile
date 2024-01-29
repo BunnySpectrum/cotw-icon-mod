@@ -8,15 +8,18 @@ ifeq ($(OS),Windows_NT)
   ifeq ($(shell uname -s),) # not in a bash-like shell
 	CLEANUP = del /F /Q
 	MKDIR = mkdir
+	COPY = copy
   else # in a bash-like shell, like msys
 	CLEANUP = rm -f
 	MKDIR = mkdir -p
+	COPY = cp
   endif
 	TARGET_EXTENSION=exe
 else
 	CLEANUP = rm -f
 	MKDIR = mkdir -p
 	TARGET_EXTENSION=out
+	COPY = cp
 endif
 # End [1]
 
@@ -53,6 +56,7 @@ CFLAGS=-I. -I$(PATH_Unity) -I$(PATH_Lib) -DTEST
 ############################
 ### Begin rules sections ###
 ############################
+.DEFAULT_GOAL := dev
 
 # List out the results [1]
 RESULTS = $(patsubst $(PATH_Test)Test_%.c,$(PATH_BResults)Test_%.txt,$(SRC_Test) )
@@ -77,7 +81,6 @@ test: $(BUILD_PATHS) $(RESULTS)
 
 # Create results [1]
 $(PATH_BResults)%.txt: $(PATH_Build)%.$(TARGET_EXTENSION)
-	@echo "\nhi"
 	-./$< > $@ 2>&1
 # End [1]
 
@@ -123,8 +126,8 @@ $(PATH_BResults):
 	$(MKDIR) $(PATH_BResults)
 # End [1]
 
-
-
+.PHONY: dev
+dev: test build
 
 $(PATH_Build)pgrm.$(TARGET_EXTENSION): $(PATH_BObjs)main.o $(patsubst $(PATH_Lib)%.c,$(PATH_BObjs)%.o,$(SRC_Lib) )
 	$(LINK) -o $@ $^
@@ -136,7 +139,7 @@ build: $(PATH_Build)pgrm.$(TARGET_EXTENSION)
 
 .PHONY: run
 run: build
-	./$(PATH_Build)pgrm.$(TARGET_EXTENSION) ./misc
+	./$(PATH_Build)pgrm.$(TARGET_EXTENSION) ./misc/patch.exe ./misc/icon1.ico
 
 
 
@@ -145,6 +148,7 @@ clean:
 	$(CLEANUP) $(PATH_BObjs)*.o
 	$(CLEANUP) $(PATH_Build)*.$(TARGET_EXTENSION)
 	$(CLEANUP) $(PATH_BResults)*.txt
+	$(COPY) ./misc/CASTLE1.exe ./misc/patch.exe
 # End [1]
 
 
