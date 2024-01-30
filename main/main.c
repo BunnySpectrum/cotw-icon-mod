@@ -1,7 +1,12 @@
 
+#ifdef WIN31
+	#include "bunint.h"
+#else
+	#include <stdint.h>
+	#include <inttypes.h>
+#endif
+
 #include <stdio.h>
-#include <stdint.h>
-#include <inttypes.h>
 #include <stdlib.h>
 #include <errno.h>
 
@@ -16,6 +21,12 @@
 
 //iconIndex is relative to the dirEntry
 void write_ico(FILE* exeFile, FILE* fileHandle, groupIconDirEntry_t dirEntry, castleResourceType_t iconResource, nameInfo_t iconNameInfo){
+    uint8_t data;
+    uint32_t addr;
+
+
+
+
     // little endian file
     //icon dir
     // write [00, 00] rsvd
@@ -57,8 +68,7 @@ void write_ico(FILE* exeFile, FILE* fileHandle, groupIconDirEntry_t dirEntry, ca
     //need to write rnLength bytes from offset<<4
     //printf("DBG: Writing %"PRIu16" bytes from %"PRIu16"\n", dirEntry.bytesInRes, iconNameInfo.rnOffset << 4);
     fseek(exeFile, iconNameInfo.rnOffset << 4, SEEK_SET);
-    uint8_t data;
-    for(uint32_t addr=0; addr < dirEntry.bytesInRes; addr++){
+    for(addr=0; addr < dirEntry.bytesInRes; addr++){
         read_byte(exeFile, &data);
         putc(data, fileHandle);
     }
@@ -67,18 +77,18 @@ void write_ico(FILE* exeFile, FILE* fileHandle, groupIconDirEntry_t dirEntry, ca
 
 
 void replace_ico(FILE* exeFile, FILE* iconFile, groupIconDirEntry_t dirEntry, castleResourceType_t iconResource, nameInfo_t iconNameInfo){
+    uint8_t data;
+    uint32_t addr;
+    uint32_t wrote;
 
     //cheating - I know the offset is 0x16
     fseek(iconFile, 0x16, SEEK_SET);
 
 
     //need to replace rnLength bytes from offset<<4
-    printf("Seek to %#x, write %#x bytes\n", iconNameInfo.rnOffset << 4, dirEntry.bytesInRes);
-    fseek(exeFile, iconNameInfo.rnOffset << 4, SEEK_SET);
+    printf("Seek to %#lx, write %#lx bytes\n", (uint32_t)iconNameInfo.rnOffset << 4, dirEntry.bytesInRes); //cast then shift for win3.1
+    fseek(exeFile, (uint32_t)iconNameInfo.rnOffset << 4, SEEK_SET); //cast then shift for win3.1
 
-    uint8_t data;
-    uint32_t addr;
-    uint32_t wrote;
     for(addr=0; addr < dirEntry.bytesInRes; addr++){
         read_byte(iconFile, &data);
         // read_byte(exeFile, &data);
@@ -107,33 +117,50 @@ uint8_t parse_args(int argc, char* argv[], char** exePath, char** iconPath){
 int main(int argc, char* argv[]){
     char* exePath;
     char* iconPath;
+    FILE *fp;
+    uint8_t scratch8;
+    uint16_t scratch16;
+    uint32_t scratch32;
+    uint32_t currentTypeInfoAddress;
+    uint32_t rcsResourceNamesAddress;
+    typeInfoList_t typeInfoList;
+    castleResources_t castleResources;
+    uint16_t groupIconNum;
+    uint16_t endIndex;
+    groupIconDir_t groupIconDir;
+    groupIconDirEntry_t groupIconDirEntry;
+    nameInfo_t groupIconNameInfo;
+    nameInfo_t iconNameInfo;
+    FILE* iconFile;
+    dosHeader_t dosHeader;
+    windowsHeader_t winHeader;
+    resourceTable_t resourceTable;
+    nameInfo_t nameInfo;
+
+    printf("Sizeof: uint8_t %d, uint16_t %d, uint32_t %d\n", sizeof(uint8_t), sizeof(uint16_t), sizeof(uint32_t));
+    
 
     if (MAIN_OK != parse_args(argc, argv, &exePath, &iconPath)){
         printf("Incorrect number of arguments. Argc = %d\n", argc);
         printf("Usage: %s path/to/exe path/to/icon\n", argv[0]);
         return 0;
     }
-    printf("Path to EXE: %s\n", exePath);
+    printf("%d) Path to EXE: %s\n", __LINE__, exePath);
     // return 0;
 
 
 
-    FILE *fp;
 
-
-    uint8_t scratch8;
-    uint16_t scratch16;
-    uint32_t scratch32;
-
-    dosHeader_t dosHeader;
-    windowsHeader_t winHeader;
-    resourceTable_t resourceTable;
 
 
     fp = fopen(exePath, "rb+");
     printf("EXE: %s\n", exePath);
     if (!fp){
-        perror("Unable to open EXE.");
+	#ifdef WIN31
+	    printf("Unable to open EXE.");
+	#else
+        	perror("Unable to open EXE.");
+	#endif
         return 0;
     }
 
@@ -169,10 +196,7 @@ int main(int argc, char* argv[]){
     printf("\n***Resource Table***\n");
     printf("Alignment shift count: %d\n", resourceTable.rcsAlignShift);
 
-    uint32_t currentTypeInfoAddress = resourceTable.baseAddress + 0x2;
-    uint32_t rcsResourceNamesAddress;
-    typeInfoList_t typeInfoList;
-    castleResources_t castleResources;
+    currentTypeInfoAddress = resourceTable.baseAddress + 0x2;
     
     do{
         typeInfoList.address = currentTypeInfoAddress;
@@ -180,13 +204,13 @@ int main(int argc, char* argv[]){
 
         // When we see a type of 0, it means we've left the array. So we're done
         if (typeInfoList.typeInfo.rtTypeID == 0x0){
-            printf("rcsEndTypes at %#x\n", currentTypeInfoAddress);
+            printf("rcsEndTypes at %#lx\n", currentTypeInfoAddress);
             rcsResourceNamesAddress = currentTypeInfoAddress + 0x2;
             break;
         }
 
         rt_read_resource_count(fp, &typeInfoList);
-        printf("\tTypeinfo @ %#x: type %#x, count %d\n", typeInfoList.address, typeInfoList.typeInfo.rtTypeID, typeInfoList.typeInfo.rtResourceCount);
+        printf("\tTypeinfo @ %#lx: type %#x, count %d\n", typeInfoList.address, typeInfoList.typeInfo.rtTypeID, typeInfoList.typeInfo.rtResourceCount); //needs lx for address for win3.1
 
 
         switch(typeInfoList.typeInfo.rtTypeID & 0xFFF){
@@ -259,7 +283,6 @@ int main(int argc, char* argv[]){
     // first word of a TYPEINFO is the typeID. When we read a typeID of 0x0 we know we are done
 
 
-    nameInfo_t nameInfo;
     // get_nameinfo_for_resource(fp, castleResources.groupCursor, 0, &nameInfo);
     // printf("Group cursor 0\n");
     // print_nameinfo(nameInfo);
@@ -270,19 +293,13 @@ int main(int argc, char* argv[]){
     // print_nameinfo(nameInfo);
     // printf("\n");
 
-    uint16_t groupIconNum;
-    uint16_t endIndex = castleResources.groupIcon.resourceCount;
+    endIndex = castleResources.groupIcon.resourceCount;
 
-    groupIconDir_t groupIconDir;
-    groupIconDirEntry_t groupIconDirEntry;
-    nameInfo_t groupIconNameInfo;
-    nameInfo_t iconNameInfo;
-    FILE* iconFile;
 
-    for(groupIconNum = 0; groupIconNum < endIndex; groupIconNum++){
+    //for(groupIconNum = 0; groupIconNum < endIndex; groupIconNum++){
         // printf("*** Icon Dir %d ***\n", groupIconNum);
-        get_nameinfo_for_resource(fp, castleResources.groupIcon, groupIconNum, &nameInfo);
-        access_group_icon(fp, nameInfo.rnOffset << 4, &groupIconDir);
+       // get_nameinfo_for_resource(fp, castleResources.groupIcon, groupIconNum, &nameInfo);
+       // access_group_icon(fp, nameInfo.rnOffset << 4, &groupIconDir);
 
         // walk through all entries
         // for(uint16_t entryNum = 0; entryNum < groupIconDir.count; entryNum++){
@@ -307,7 +324,7 @@ int main(int argc, char* argv[]){
 
 
         // }
-    }
+    //}
 
     
     // if(-1 == asprintf(&filePath, "%s/player_init.ico", workingDir)){
@@ -324,14 +341,23 @@ int main(int argc, char* argv[]){
 
 
     //get dirEntry
+    printf("\nNameinfo for groupIcon\n");
     get_nameinfo_for_resource(fp, castleResources.groupIcon, GROUP_ICON_ID_PLAYER_FEM, &groupIconNameInfo);
-    access_group_icon(fp, groupIconNameInfo.rnOffset << 4, &groupIconDir);
+    print_nameinfo(groupIconNameInfo);
+
+    printf("\nGroupIcon Dir\n");
+    access_group_icon(fp, (uint32_t)(groupIconNameInfo.rnOffset) << 4, &groupIconDir); // have to cast first for win3.1 sizes
+    print_group_icon_dir(groupIconDir);
 
     //get entry for icon we want
+    printf("\ngroupIcon dir entry\n");
     access_group_icon_entry(fp, groupIconDir.entryAddress, ICON_ENTRY_PLAYER_FEM_COLOR, &groupIconDirEntry);
+    print_group_icon_dir_entry(groupIconDirEntry);
 
     //get icon data
+    printf("\nIcon name info\n");
     get_nameinfo_for_resource(fp, castleResources.icon, groupIconDirEntry.id - 1, &iconNameInfo);
+    print_nameinfo(iconNameInfo);
 
     //write 
     // write_ico(fp, iconFile, groupIconDirEntry, castleResources.icon, iconNameInfo);
@@ -360,7 +386,11 @@ int main(int argc, char* argv[]){
     printf("Icon: %s\n", iconPath);
     // iconFile = fopen("icons/group_216_entry_1.ico", "rb");
     if (!iconFile){
-        perror("Unable to open icon!");
+	#ifdef WIN31
+	    printf("Unable to open icon.");
+	#else
+        	perror("Unable to open icon.");
+	#endif
         return 0;
     }
     

@@ -5,7 +5,16 @@
 extern "C" {
 #endif
 
-#include <stdint.h>
+#ifdef WIN31
+	#include "bunint.h"
+#else
+	#include <stdint.h>
+	#include <inttypes.h>
+#endif
+
+#include <stdio.h>
+#include <stdlib.h>
+
 #define WIN_CHAR_LEN 1
 #define WIN_WORD_LEN 2
 #define WIN_DWORD_LEN 4

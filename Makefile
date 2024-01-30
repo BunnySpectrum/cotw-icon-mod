@@ -49,7 +49,7 @@ SRC_Lib = $(wildcard $(PATH_Lib)*.c)
 COMPILE=gcc -c
 LINK=gcc
 DEPEND=gcc -MM -MG -MF
-CFLAGS=-I. -I$(PATH_Unity) -I$(PATH_Lib) -DTEST
+CFLAGS=-I. -I$(PATH_Unity) -I$(PATH_Lib) -DTEST -Wall -pedantic
 # End [1]
 
 

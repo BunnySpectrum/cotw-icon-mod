@@ -1,9 +1,3 @@
-
-#include <stdio.h>
-#include <stdint.h>
-#include <inttypes.h>
-#include <stdlib.h>
-
 #include "win.h"
 #include "io.h"
 
@@ -89,6 +83,7 @@ void print_nameinfo(nameInfo_t nameInfo){
 
 
 void access_group_icon(FILE* fileHandle, uint32_t address, groupIconDir_t* record){
+    printf("\tDBG address: %#lx\n", address);
     fseek(fileHandle, address, SEEK_SET);
     read_word(fileHandle, &record->rsvd);
     read_word(fileHandle, &record->type);
@@ -101,7 +96,7 @@ void print_group_icon_dir(groupIconDir_t record){
     printf("Rsvd: %#x\n", record.rsvd);
     printf("Type: %#x\n", record.type);
     printf("Count: %#x\n", record.count);
-    printf("Entries address: %#x\n", record.entryAddress);
+    printf("Entries address: %#lx\n", record.entryAddress);
 }
 
 void access_group_icon_entry(FILE* fileHandle, uint32_t address, uint16_t index, groupIconDirEntry_t* record){
