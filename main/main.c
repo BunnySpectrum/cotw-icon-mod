@@ -252,92 +252,12 @@ int main(int argc, char* argv[]){
         }
 
 
-        // if ( (typeInfoList.typeInfo.rtTypeID & 0xFFF) == RT_BITMAP){
-        //     printf("Look at bitmap\n");
-        //     uint32_t currentNameInfoAddress = typeInfoList.address + 0x8;
-        //     for(uint16_t idx=0; idx < typeInfoList.typeInfo.rtResourceCount; idx++){
-        //         fseek(fp, currentNameInfoAddress, SEEK_SET);
-
-        //         read_word(fp, &scratch16);
-        //         printf("rnOffset: %#x\n", scratch16);
-
-        //         read_word(fp, &scratch16);
-        //         printf("rnLength: %#x\n", scratch16);
-
-        //         read_word(fp, &scratch16);
-        //         printf("rnFlags: %#x\n", scratch16);
-
-        //         read_word(fp, &scratch16);
-        //         printf("rnID: %#x\n", scratch16);
-                
-        //         printf("\n");
-        //         currentNameInfoAddress += NAMEINFO_BYTE_LENGTH;
-        //     }
-        // }
-
-
-
-
         currentTypeInfoAddress += 0x8 + typeInfoList.typeInfo.rtResourceCount*6*2;
     } while(typeInfoList.typeInfo.rtTypeID != 0x0);
     // first word of a TYPEINFO is the typeID. When we read a typeID of 0x0 we know we are done
 
 
-    // get_nameinfo_for_resource(fp, castleResources.groupCursor, 0, &nameInfo);
-    // printf("Group cursor 0\n");
-    // print_nameinfo(nameInfo);
-    // printf("\n");
-
-    // get_nameinfo_for_resource(fp, castleResources.cursor, 0, &nameInfo);
-    // printf("Cursor 0\n");
-    // print_nameinfo(nameInfo);
-    // printf("\n");
-
     endIndex = castleResources.groupIcon.resourceCount;
-
-
-    //for(groupIconNum = 0; groupIconNum < endIndex; groupIconNum++){
-        // printf("*** Icon Dir %d ***\n", groupIconNum);
-       // get_nameinfo_for_resource(fp, castleResources.groupIcon, groupIconNum, &nameInfo);
-       // access_group_icon(fp, nameInfo.rnOffset << 4, &groupIconDir);
-
-        // walk through all entries
-        // for(uint16_t entryNum = 0; entryNum < groupIconDir.count; entryNum++){
-        //     // printf("Entry %d/%d\n", entryNum, groupIconDir.count-1);
-        //     access_group_icon_entry(fp, groupIconDir.entryAddress, entryNum, &groupIconDirEntry);
-        //     // print_group_icon_dir_entry(groupIconDirEntry);
-        //     // printf("\n");
-
-        //     char* fileName;
-        //     asprintf(&fileName, "icons/group_%"PRIu16"_entry_%"PRIu16".ico", groupIconNum, entryNum);
-        //     iconFile = fopen(fileName, "wb");
-        //     free(fileName);
-
-        //     if (!iconFile)
-        //     {
-        //         printf("Unable to open file!");
-        //         break;
-        //     }
-        //     get_nameinfo_for_resource(fp, castleResources.icon, groupIconDirEntry.id - 1, &iconNameInfo);
-        //     write_ico(fp, iconFile, groupIconDirEntry, castleResources.icon, iconNameInfo);
-        //     fclose(iconFile);
-
-
-        // }
-    //}
-
-    
-    // if(-1 == asprintf(&filePath, "%s/player_init.ico", workingDir)){
-    //     printf("Unable allocate string for %s/player_init.ico\n", workingDir);
-    //     return 0; 
-    // }
-
-    // iconFile = fopen(filePath, "wb");
-    // free(filePath);
-    // if (!iconFile){
-    //     perror("Unable to create player_init.ico");
-    //     return 0;
-    // }
 
 
     //get dirEntry
@@ -359,32 +279,12 @@ int main(int argc, char* argv[]){
     get_nameinfo_for_resource(fp, castleResources.icon, groupIconDirEntry.id - 1, &iconNameInfo);
     print_nameinfo(iconNameInfo);
 
-    //write 
-    // write_ico(fp, iconFile, groupIconDirEntry, castleResources.icon, iconNameInfo);
-    // fclose(iconFile);
-
-    // printf("Player\n");
-    // print_group_icon_dir_entry(groupIconDirEntry);
     
-    
-
-    // if(-1 == asprintf(&filePath, "%s/patch.EXE", workingDir)){
-    //     printf("Unable allocate string for %s/patch.EXE\n", workingDir);
-    //     return 0; 
-    // }
-
-    // FILE* newExe;
-    // newExe = fopen(filePath, "rb+");
-    // free(filePath);
-    // if (!newExe){
-    //     perror("Unable to open patch.EXE!");
-    //     return 0;
-    // }
     
 
     iconFile = fopen(iconPath, "rb");
     printf("Icon: %s\n", iconPath);
-    // iconFile = fopen("icons/group_216_entry_1.ico", "rb");
+
     if (!iconFile){
 	#ifdef WIN31
 	    printf("Unable to open icon.");
@@ -395,61 +295,5 @@ int main(int argc, char* argv[]){
     }
     
     replace_ico(fp, iconFile, groupIconDirEntry, castleResources.icon, iconNameInfo);
-
-
-    // get_nameinfo_for_resource(fp, castleResources.icon, 0, &nameInfo);
-    // printf("Icon 0\n");
-    // print_nameinfo(nameInfo);
-    // printf("\n");
-
-
-
-
-    // get_nameinfo_for_resource(fp, castleResources.bitmap, 0, &nameInfo);
-    // printf("Bitmap 0\n");
-    // print_nameinfo(nameInfo);
-    // printf("\n");
-
-    // get_nameinfo_for_resource(fp, castleResources.menu, 0, &nameInfo);
-    // printf("Menu 0\n");
-    // print_nameinfo(nameInfo);
-    // printf("\n");
-
-    // get_nameinfo_for_resource(fp, castleResources.dialog, 0, &nameInfo);
-    // printf("Dialog 0\n");    
-    // print_nameinfo(nameInfo);
-    // printf("\n");
-
-
-
-    
-
-    /*
-    uint8_t nameLength;
-    fseek(fp, rcsResourceNamesAddress, SEEK_SET);
-    read_byte(fp, &nameLength);
-    
-    while(nameLength > 0){
-        for(uint8_t idx = 0; idx < nameLength; idx++){
-            read_byte(fp, &scratch8);
-            printf("%c", scratch8);
-        }
-        printf("\n");
-        read_byte(fp, &nameLength);
-    }
-    // rscEndNames at 0x2fa0 + 0x4 (last item of resource table)
-    // Implies some other body of text at 0x2FA6?
-    */
-    
-
-
-
-
-
     fclose(fp);
-    // fclose(newExe);
-
-
-
-
 }
