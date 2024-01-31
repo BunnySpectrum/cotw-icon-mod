@@ -5,7 +5,15 @@
 extern "C" {
 #endif
 
-#include <stdint.h>
+#ifdef WIN31
+	#include "bunint.h"
+#else
+	#include <stdint.h>
+	#include <inttypes.h>
+#endif
+
+#include <stdio.h>
+#include <stdlib.h>
 
 #include "win.h"
 

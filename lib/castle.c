@@ -1,8 +1,3 @@
-#include <stdio.h>
-#include <stdint.h>
-#include <inttypes.h>
-#include <stdlib.h>
-
 #include "castle.h"
 #include "win.h"
 
