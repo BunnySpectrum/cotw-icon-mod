@@ -5,16 +5,10 @@
 extern "C" {
 #endif
 
-#ifdef WIN31
-	#include "bunint.h"
-#else
-	#include <stdint.h>
-	#include <inttypes.h>
-#endif
-
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "bunint.h"
 #include "win.h"
 
 

@@ -5,16 +5,11 @@
 extern "C" {
 #endif
 
-#ifdef WIN31
-	#include "bunint.h"
-#else
-	#include <stdint.h>
-	#include <inttypes.h>
-#endif
 
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "bunint.h"
 
 uint8_t read_byte(FILE* fileHandle, uint8_t* result);
 uint8_t read_word(FILE* fileHandle, uint16_t* result);

@@ -79,22 +79,18 @@ void write_ico(FILE* exeFile, FILE* fileHandle, groupIconDirEntry_t dirEntry, ca
 void replace_ico(FILE* exeFile, FILE* iconFile, groupIconDirEntry_t dirEntry, castleResourceType_t iconResource, nameInfo_t iconNameInfo){
     uint8_t data;
     uint32_t addr;
-    uint32_t wrote;
 
     //cheating - I know the offset is 0x16
     fseek(iconFile, 0x16, SEEK_SET);
 
 
     //need to replace rnLength bytes from offset<<4
-    printf("Seek to %#lx, write %#lx bytes\n", (uint32_t)iconNameInfo.rnOffset << 4, dirEntry.bytesInRes); //cast then shift for win3.1
+    printf("Seek to %#"PRIx32", write %#"PRIx32" bytes\n", (uint32_t)iconNameInfo.rnOffset << 4, dirEntry.bytesInRes); //cast then shift for win3.1
     fseek(exeFile, (uint32_t)iconNameInfo.rnOffset << 4, SEEK_SET); //cast then shift for win3.1
 
     for(addr=0; addr < dirEntry.bytesInRes; addr++){
         read_byte(iconFile, &data);
-        // read_byte(exeFile, &data);
-        // printf("%#x ", data);
-        wrote = fwrite(&data, 1, 1, exeFile);
-        // printf("Wrote %d\n", wrote);
+        fwrite(&data, 1, 1, exeFile);
     }
     printf("\nWrote %#x bytes\n", addr);
 
@@ -118,15 +114,9 @@ int main(int argc, char* argv[]){
     char* exePath;
     char* iconPath;
     FILE *fp;
-    uint8_t scratch8;
-    uint16_t scratch16;
-    uint32_t scratch32;
     uint32_t currentTypeInfoAddress;
-    uint32_t rcsResourceNamesAddress;
     typeInfoList_t typeInfoList;
     castleResources_t castleResources;
-    uint16_t groupIconNum;
-    uint16_t endIndex;
     groupIconDir_t groupIconDir;
     groupIconDirEntry_t groupIconDirEntry;
     nameInfo_t groupIconNameInfo;
@@ -135,9 +125,8 @@ int main(int argc, char* argv[]){
     dosHeader_t dosHeader;
     windowsHeader_t winHeader;
     resourceTable_t resourceTable;
-    nameInfo_t nameInfo;
 
-    printf("Sizeof: uint8_t %d, uint16_t %d, uint32_t %d\n", sizeof(uint8_t), sizeof(uint16_t), sizeof(uint32_t));
+    printf("Sizeof: uint8_t %"PRIz", uint16_t %"PRIz", uint32_t %"PRIz"\n", sizeof(uint8_t), sizeof(uint16_t), sizeof(uint32_t));
     
 
     if (MAIN_OK != parse_args(argc, argv, &exePath, &iconPath)){
@@ -204,13 +193,12 @@ int main(int argc, char* argv[]){
 
         // When we see a type of 0, it means we've left the array. So we're done
         if (typeInfoList.typeInfo.rtTypeID == 0x0){
-            printf("rcsEndTypes at %#lx\n", currentTypeInfoAddress);
-            rcsResourceNamesAddress = currentTypeInfoAddress + 0x2;
+            printf("rcsEndTypes at %#"PRIx32"\n", currentTypeInfoAddress);
             break;
         }
 
         rt_read_resource_count(fp, &typeInfoList);
-        printf("\tTypeinfo @ %#lx: type %#x, count %d\n", typeInfoList.address, typeInfoList.typeInfo.rtTypeID, typeInfoList.typeInfo.rtResourceCount); //needs lx for address for win3.1
+        printf("\tTypeinfo @ %#"PRIx32": type %#"PRIx16", count %"PRIu16"\n", typeInfoList.address, typeInfoList.typeInfo.rtTypeID, typeInfoList.typeInfo.rtResourceCount); //needs lx for address for win3.1
 
 
         switch(typeInfoList.typeInfo.rtTypeID & 0xFFF){
@@ -255,9 +243,6 @@ int main(int argc, char* argv[]){
         currentTypeInfoAddress += 0x8 + typeInfoList.typeInfo.rtResourceCount*6*2;
     } while(typeInfoList.typeInfo.rtTypeID != 0x0);
     // first word of a TYPEINFO is the typeID. When we read a typeID of 0x0 we know we are done
-
-
-    endIndex = castleResources.groupIcon.resourceCount;
 
 
     //get dirEntry
