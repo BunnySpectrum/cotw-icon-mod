@@ -1,0 +1,1 @@
+![cotw-icon-mod](logo.png)
