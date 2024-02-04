@@ -15,15 +15,11 @@
 #define PRIx16 "x"
 #define PRIx32 "lx"
 
-#define PRIz PRIu32
-
-
 #else
 
 #include <stdint.h>
 #include <inttypes.h>
 
-#define PRIz "zu"
 
 #endif
 

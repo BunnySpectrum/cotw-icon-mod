@@ -54,10 +54,10 @@ void write_ico(FILE* exeFile, FILE* fileHandle, groupIconDirEntry_t dirEntry, ca
     putc(dirEntry.bitCount & 0xFF, fileHandle);
     putc((dirEntry.bitCount >> 8)&0xFF, fileHandle);
 
-    putc(dirEntry.bytesInRes & 0xFF, fileHandle);
-    putc((dirEntry.bytesInRes >> 8)&0xFF, fileHandle);
-    putc((dirEntry.bytesInRes >> 16)&0xFF, fileHandle);
-    putc((dirEntry.bytesInRes >> 24)&0xFF, fileHandle);
+    putc((uint8_t)(dirEntry.bytesInRes & 0xFF), fileHandle);
+    putc((uint8_t)((dirEntry.bytesInRes >> 8)&0xFF), fileHandle);
+    putc((uint8_t)((dirEntry.bytesInRes >> 16)&0xFF), fileHandle);
+    putc((uint8_t)((dirEntry.bytesInRes >> 24)&0xFF), fileHandle);
 
     // write offset
     putc(0x16, fileHandle);
@@ -125,9 +125,6 @@ int main(int argc, char* argv[]){
     dosHeader_t dosHeader;
     windowsHeader_t winHeader;
     resourceTable_t resourceTable;
-
-    printf("Sizeof: uint8_t %"PRIz", uint16_t %"PRIz", uint32_t %"PRIz"\n", sizeof(uint8_t), sizeof(uint16_t), sizeof(uint32_t));
-    
 
     if (MAIN_OK != parse_args(argc, argv, &exePath, &iconPath)){
         printf("Incorrect number of arguments. Argc = %d\n", argc);

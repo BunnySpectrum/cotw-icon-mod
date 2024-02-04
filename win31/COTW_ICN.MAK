@@ -1,0 +1,115 @@
+
+PROJ = COTW_ICN
+DEBUG = 1
+PROGTYPE = 3
+CALLER = 
+ARGS = patch.exe icon0.ico
+DLLS = 
+D_RCDEFINES = -d_DEBUG
+R_RCDEFINES = -dNDEBUG
+ORIGIN = MSVC
+ORIGIN_VER = 1.00
+PROJPATH = $(COTW_ICON_MOD_ROOT)\WIN31
+USEMFC = 1
+CC = cl
+CPP = cl
+CXX = cl
+CCREATEPCHFLAG = 
+CPPCREATEPCHFLAG = 
+CUSEPCHFLAG = 
+CPPUSEPCHFLAG = 
+FIRSTC = MAIN.C      
+FIRSTCPP =             
+RC = rc
+CFLAGS_D_WTTY = /nologo /G2 /Mq /W3 /Zi /AM /Od /D "_DEBUG" /D "WIN31" /I "$(PROJPATH)\..\lib" /FR /Fd"COTW_ICN.PDB"
+CFLAGS_R_WTTY = /nologo /Gs /G2 /Mq /W3 /AM /Ox /D "NDEBUG" /FR 
+LFLAGS_D_WTTY = /NOLOGO /ONERROR:NOEXE /NOD /PACKC:57344 /CO /ALIGN:16
+LFLAGS_R_WTTY = /NOLOGO /ONERROR:NOEXE /NOD /PACKC:57344 /ALIGN:16
+LIBS_D_WTTY = mafxcwd oldnames libw mlibcewq
+LIBS_R_WTTY = mafxcw oldnames libw mlibcewq
+RCFLAGS = /nologo
+RESFLAGS = /nologo
+RUNFLAGS = 
+DEFFILE = COTW_ICN.DEF
+OBJS_EXT = 
+LIBS_EXT = 
+!if "$(DEBUG)" == "1"
+CFLAGS = $(CFLAGS_D_WTTY)
+LFLAGS = $(LFLAGS_D_WTTY)
+LIBS = $(LIBS_D_WTTY)
+MAPFILE = nul
+RCDEFINES = $(D_RCDEFINES)
+DEFFILE=$(PROJPATH)\COTW_ICN.DEF
+!else
+CFLAGS = $(CFLAGS_R_WTTY)
+LFLAGS = $(LFLAGS_R_WTTY)
+LIBS = $(LIBS_R_WTTY)
+MAPFILE = nul
+RCDEFINES = $(R_RCDEFINES)
+DEFFILE=$(PROJPATH)\COTW_ICN.DEF
+!endif
+!if [if exist MSVC.BND del MSVC.BND]
+!endif
+SBRS = MAIN.SBR \
+		CASTLE.SBR \
+		IO.SBR \
+		WIN.SBR
+
+
+MAIN_DEP = $(PROJPATH)\..\main\main.h
+
+
+CASTLE_DEP = $(PROJPATH)\..\lib\castle.h \
+	$(PROJPATH)\..\lib\bunint.h \
+	$(PROJPATH)\..\lib\win.h
+
+
+IO_DEP = $(PROJPATH)\..\lib\win.h \
+	$(PROJPATH)\..\lib\bunint.h
+
+
+WIN_DEP = $(PROJPATH)\..\lib\win.h \
+	$(PROJPATH)\..\lib\bunint.h
+
+
+all:	$(PROJ).EXE $(PROJ).BSC
+
+MAIN.OBJ:	$(PROJPATH)\..\MAIN\MAIN.C $(MAIN_DEP)
+	$(CC) $(CFLAGS) $(CCREATEPCHFLAG) /c $(PROJPATH)\..\MAIN\MAIN.C
+
+CASTLE.OBJ:	$(PROJPATH)\..\LIB\CASTLE.C $(CASTLE_DEP)
+	$(CC) $(CFLAGS) $(CUSEPCHFLAG) /c $(PROJPATH)\..\LIB\CASTLE.C
+
+IO.OBJ:	Z:\LIB\IO.C $(IO_DEP)
+	$(CC) $(CFLAGS) $(CUSEPCHFLAG) /c $(PROJPATH)\..\LIB\IO.C
+
+WIN.OBJ:	$(PROJPATH)\..\LIB\WIN.C $(WIN_DEP)
+	$(CC) $(CFLAGS) $(CUSEPCHFLAG) /c $(PROJPATH)\..\LIB\WIN.C
+
+
+$(PROJ).EXE::	MAIN.OBJ CASTLE.OBJ IO.OBJ WIN.OBJ $(OBJS_EXT) $(DEFFILE)
+	echo >NUL @<<$(PROJ).CRF
+MAIN.OBJ +
+CASTLE.OBJ +
+IO.OBJ +
+WIN.OBJ +
+$(OBJS_EXT)
+$(PROJ).EXE
+$(MAPFILE)
+c:\msvc\lib\+
+c:\msvc\mfc\lib\+
+$(LIBS)
+$(DEFFILE);
+<<
+	link $(LFLAGS) @$(PROJ).CRF
+	$(RC) $(RESFLAGS) $@
+
+
+run: $(PROJ).EXE
+	$(PROJ) $(ARGS)
+
+
+$(PROJ).BSC: $(SBRS)
+	bscmake @<<
+/o$@ $(SBRS)
+<<
