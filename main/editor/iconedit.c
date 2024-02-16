@@ -25,7 +25,8 @@ LPSTR buffer = "1234567890";
 
 #define TOOLBAR_ROWS 10
 #define TOOLBAR_COLS 2
-#define CANVAS_LEN 32
+#define CANVAS_DIV 32
+#define EXTRA_WORDS 32*16
 
 int PASCAL WinMain(HANDLE hInstance, HANDLE hPrevInstance, LPSTR lpszCmdParam, int nCmdShow){
     static char szNameApp[] = "CharacterCreator";
@@ -41,7 +42,7 @@ int PASCAL WinMain(HANDLE hInstance, HANDLE hPrevInstance, LPSTR lpszCmdParam, i
         wndclass.cbWndExtra = 0;
         wndclass.hInstance = hInstance;
         wndclass.hIcon = LoadIcon(NULL, IDI_APPLICATION);
-        wndclass.hCursor = LoadCursor(NULL, IDC_ARROW);
+        wndclass.hCursor = LoadCursor(NULL, IDC_CROSS);
         wndclass.hbrBackground = GetStockObject(WHITE_BRUSH);
         wndclass.lpszMenuName = NULL;
         wndclass.lpszClassName = szNameApp;
@@ -56,7 +57,7 @@ int PASCAL WinMain(HANDLE hInstance, HANDLE hPrevInstance, LPSTR lpszCmdParam, i
         
         // Child window - canvas
         wndclass.lpfnWndProc = WndProcCanvas;
-        wndclass.cbWndExtra = sizeof(WORD);
+        wndclass.cbWndExtra = sizeof(WORD)*EXTRA_WORDS;
         wndclass.hIcon = NULL;
         wndclass.lpszClassName = szNameCanvas;
         RegisterClass(&wndclass);
@@ -168,69 +169,34 @@ long FAR PASCAL _export WndProcMain(HWND hwnd, UINT message, UINT wParam, LONG l
             return 0;
         
         case WM_KEYDOWN:
-            // nLength = wsprintf(szBuffer, "wParam %d", wParam);
-            // MessageBox(hwnd, szBuffer, "WM_KEYDOWN", MB_ICONEXCLAMATION | MB_OK);
-            
             switch(wParam){
                 case VK_SPACE:
-                    MessageBeep(MB_OK);
-                    hdc = GetDC(hwnd);
-                    hBrush = CreateSolidBrush(RGB(255, 0, 0));
-                    
                     GetCursorPos(&lpMousePoint);
-                    ScreenToClient(hwnd, &lpMousePoint);
-                    rect.left = lpMousePoint.x;
-                    rect.top = lpMousePoint.y;
-                    rect.right = rect.left + canvasSize/CANVAS_LEN;
-                    rect.bottom = rect.top + canvasSize/CANVAS_LEN;
-
-                    FillRect(hdc, &rect, hBrush);
-                    ReleaseDC(hwnd, hdc);
-                    DeleteObject(hBrush);
-                    ValidateRect(hwnd, NULL);
-
+                    ScreenToClient(hwndCanvas, &lpMousePoint);
+                    SendMessage(hwndCanvas, WM_LBUTTONDOWN, 0, MAKELONG(lpMousePoint.x, lpMousePoint.y));
                     break;
 
                 case VK_LEFT:
                     GetCursorPos(&lpMousePoint);
-                    lpMousePoint.x -= canvasSize/CANVAS_LEN;
+                    lpMousePoint.x -= canvasSize/CANVAS_DIV;
                     SetCursorPos(lpMousePoint.x, lpMousePoint.y);
-
-
-                    // ScreenToClient(hwnd, &lpMousePoint);
-                    // MessageBeep(MB_OK);
-                    // nLength = wsprintf(szBuffer, "wParam %d", wParam);
-                    // nLength = wsprintf(szBuffer, "Left %d %d", wParam, counter);
-    
-                    // hdc = GetDC(hwnd);
-                    // TextOut(hdc, cxChar/2, cyChar/2, szBuffer, nLength);
-                    // ReleaseDC(hwnd, hdc);
-                    // ValidateRect(hwnd, NULL);
                     break;
 
                 case VK_RIGHT:
                     GetCursorPos(&lpMousePoint);
-                    lpMousePoint.x += canvasSize/CANVAS_LEN;
+                    lpMousePoint.x += canvasSize/CANVAS_DIV;
                     SetCursorPos(lpMousePoint.x, lpMousePoint.y);
-                    // MessageBeep(MB_ICONASTERISK);
-                    // nLength = wsprintf(szBuffer, "Right %d %d", message, counter);
-
-                    // GetClientRect(hwndLog, &rect);   
-                    // hdc = GetDC(hwndLog);
-                    // TextOut(hdc, cxChar/2 + rect.left, cyChar/2 + rect.top, szBuffer, nLength);
-                    // ReleaseDC(hwndLog, hdc);
-                    // ValidateRect(hwndLog, NULL);
                     break;
 
                 case VK_UP:
                     GetCursorPos(&lpMousePoint);
-                    lpMousePoint.y -= canvasSize/CANVAS_LEN;
+                    lpMousePoint.y -= canvasSize/CANVAS_DIV;
                     SetCursorPos(lpMousePoint.x, lpMousePoint.y);
                     break;
                 
                 case VK_DOWN:
                     GetCursorPos(&lpMousePoint);
-                    lpMousePoint.y += canvasSize/CANVAS_LEN;
+                    lpMousePoint.y += canvasSize/CANVAS_DIV;
                     SetCursorPos(lpMousePoint.x, lpMousePoint.y);
                     break;
             }
@@ -306,17 +272,48 @@ long FAR PASCAL _export WndProcCanvas(HWND hwnd, UINT message, UINT wParam, LONG
     PAINTSTRUCT ps;
     RECT rect;
     static short cxBlock, cyBlock;
-    short x, y;
+    int x, y, pixel;
+    static HPEN hPen;
+    static short xSel, ySel;
+    HBRUSH hBrush;
+    POINT lpMousePoint;
 
     switch(message){
         case WM_CREATE:
-            SetWindowWord(hwnd, 0, 0);
+            for(x=0; x<EXTRA_WORDS; x++){
+                SetWindowWord(hwnd, x, (((x+1)%256)<<8) | (x%256));
+            }
+            hPen = CreatePen(PS_SOLID, 1, RGB(128, 128, 128));
             return 0;
         
         case WM_SIZE:
-            cxBlock = LOWORD(lParam) / CANVAS_LEN;
-            cyBlock = HIWORD(lParam) / CANVAS_LEN;
+            cxBlock = LOWORD(lParam) / CANVAS_DIV;
+            cyBlock = HIWORD(lParam) / CANVAS_DIV;
             return 0;
+
+        case WM_LBUTTONDOWN:
+            x = LOWORD(lParam);// / cxBlock; //CANVAS_DIV;
+            y = HIWORD(lParam);// / cyBlock; // CANVAS_DIV;
+                    
+            hdc = GetDC(hwnd);
+            hBrush = CreateSolidBrush(RGB(255, 0, 0));
+            
+            lpMousePoint.x = x - x%cxBlock;
+            lpMousePoint.y = y - y%cyBlock;
+            // GetCursorPos(&lpMousePoint);
+            // ScreenToClient(hwnd, &lpMousePoint);
+            // ClientToScreen(hwnd, &lpMousePoint);
+            rect.left = lpMousePoint.x+1;
+            rect.top = lpMousePoint.y+1;
+            rect.right = rect.left + cxBlock - 2 ;
+            rect.bottom = rect.top + cyBlock - 2;
+
+            Rectangle(hdc, rect.left-1, rect.top-1, rect.right+1, rect.bottom+1);
+            FillRect(hdc, &rect, hBrush);
+            ReleaseDC(hwnd, hdc);
+            DeleteObject(hBrush);
+            ValidateRect(hwnd, NULL);
+
 
         case WM_PAINT:
             hdc = BeginPaint(hwnd, &ps);
@@ -324,11 +321,42 @@ long FAR PASCAL _export WndProcCanvas(HWND hwnd, UINT message, UINT wParam, LONG
             
             Rectangle(hdc, rect.left, rect.top, rect.right, rect.bottom);
 
-            for(x=0; x<CANVAS_LEN; x++){
-                for(y=0; y<CANVAS_LEN; y++){
+            SelectObject(hdc, hPen);
+
+            for(x=0; x<CANVAS_DIV; x++){
+                for(y=0; y<CANVAS_DIV; y++){
                     Rectangle(hdc, rect.left + x*cxBlock, rect.top + y*cyBlock, 
                                     rect.left + x*cxBlock +cxBlock, rect.top + y*cyBlock + cyBlock);
                 }
+            }
+
+            for(pixel=0; pixel<EXTRA_WORDS*2; pixel++){
+                x = pixel % 32;
+                y = pixel/32;
+
+                if(pixel % 2 == 0){
+                hBrush = CreateSolidBrush(RGB(
+                    LOBYTE(GetWindowWord(hwnd, pixel>>1)), 
+                    LOBYTE(GetWindowWord(hwnd, pixel>>1)), 
+                    LOBYTE(GetWindowWord(hwnd, pixel>>1)) 
+                    ));
+                }else{
+                hBrush = CreateSolidBrush(RGB(
+                    HIBYTE(GetWindowWord(hwnd, (pixel>>1))), 
+                    HIBYTE(GetWindowWord(hwnd, (pixel>>1))), 
+                    HIBYTE(GetWindowWord(hwnd, (pixel>>1))) 
+                    ));
+
+                }
+
+                rect.left = x*cxBlock + 1;
+                rect.top = y*cyBlock + 1;
+                rect.right = rect.left + cxBlock - 2 ;
+                rect.bottom = rect.top + cyBlock - 2;
+
+                FillRect(hdc, &rect, hBrush);
+                GetWindowWord(hwnd, pixel);
+                DeleteObject(hBrush);
             }
 
 
@@ -346,6 +374,11 @@ long FAR PASCAL _export WndProcCanvas(HWND hwnd, UINT message, UINT wParam, LONG
 //            DrawText(hdc, "Canvas", -1, &rect, 
   //                      DT_SINGLELINE | DT_CENTER | DT_VCENTER);
             EndPaint(hwnd, &ps);
+            return 0;
+
+        case WM_DESTROY:
+            DeleteObject(hPen);
+            PostQuitMessage(0);
             return 0;
     }
     return DefWindowProc(hwnd, message, wParam, lParam);
