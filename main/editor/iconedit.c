@@ -277,11 +277,21 @@ long FAR PASCAL _export WndProcCanvas(HWND hwnd, UINT message, UINT wParam, LONG
     static short xSel, ySel;
     HBRUSH hBrush;
     POINT lpMousePoint;
+    BYTE pixelColor;
 
     switch(message){
         case WM_CREATE:
             for(x=0; x<EXTRA_WORDS; x++){
-                SetWindowWord(hwnd, x, (((x+1)%256)<<8) | (x%256));
+                SetWindowWord(hwnd, 2*x, (((2*x+1)%256)<<8) | ((2*x)%256)); //normal
+                // if(x == 127){
+                //     // SetWindowWord(hwnd, x, (((2*x+1)%256)<<8) | ((2*x)%256)); //normal
+                //     SetWindowWord(hwnd, 127, (WORD)0xFFFF);
+                // }else if(x == 128){
+                //     SetWindowWord(hwnd, 128, (WORD)0x7100); //somehow the low byte here is overwriting the hi-byte for word @ 127
+                // }else{
+                //     SetWindowWord(hwnd, x, ((((2*x+1)%256)<<8) | ((2*x)%256)) & 0xFFFF); //normal
+
+                // }
             }
             hPen = CreatePen(PS_SOLID, 1, RGB(128, 128, 128));
             return 0;
@@ -335,19 +345,12 @@ long FAR PASCAL _export WndProcCanvas(HWND hwnd, UINT message, UINT wParam, LONG
                 y = pixel/32;
 
                 if(pixel % 2 == 0){
-                hBrush = CreateSolidBrush(RGB(
-                    LOBYTE(GetWindowWord(hwnd, pixel>>1)), 
-                    LOBYTE(GetWindowWord(hwnd, pixel>>1)), 
-                    LOBYTE(GetWindowWord(hwnd, pixel>>1)) 
-                    ));
+                    pixelColor = LOBYTE(GetWindowWord(hwnd, pixel & 0xFFFE));
                 }else{
-                hBrush = CreateSolidBrush(RGB(
-                    HIBYTE(GetWindowWord(hwnd, (pixel>>1))), 
-                    HIBYTE(GetWindowWord(hwnd, (pixel>>1))), 
-                    HIBYTE(GetWindowWord(hwnd, (pixel>>1))) 
-                    ));
-
+                    pixelColor = HIBYTE(GetWindowWord(hwnd, pixel & 0xFFFE));
                 }
+
+                hBrush = CreateSolidBrush(RGB(pixelColor, pixelColor, pixelColor));
 
                 rect.left = x*cxBlock + 1;
                 rect.top = y*cyBlock + 1;
@@ -355,7 +358,6 @@ long FAR PASCAL _export WndProcCanvas(HWND hwnd, UINT message, UINT wParam, LONG
                 rect.bottom = rect.top + cyBlock - 2;
 
                 FillRect(hdc, &rect, hBrush);
-                GetWindowWord(hwnd, pixel);
                 DeleteObject(hBrush);
             }
 
