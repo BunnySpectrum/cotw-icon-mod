@@ -56,6 +56,43 @@ LPSTR buffer = "1234567890";
 #define COLOR_WHITE (RGB(255, 255, 255))
 #define COLOR_SILVER (RGB(192, 192, 192))
 
+typedef enum PixelColorCode{
+    PixelColorCodeBlack = 0,
+    PixelColorCodeGray = 8,
+    
+    PixelColorCodeMaroon = 1,
+    PixelColorCodeRed = 9,
+    
+    PixelColorCodeGreen = 2,
+    PixelColorCodeLime = 10,
+    
+    PixelColorCodeOlive = 3,
+    PixelColorCodeYellow = 11,
+    
+    PixelColorCodeNavy = 4,
+    PixelColorCodeBlue = 12,
+    
+    PixelColorCodePurple = 5,
+    PixelColorCodeFuchia = 13,
+    
+    PixelColorCodeTeal = 6,
+    PixelColorCodeAqua = 14,
+
+    PixelColorCodeSilver = 7,
+    PixelColorCodeWhite = 15
+} PixelColorCode_e;
+
+COLORREF pixelColorList[] = {COLOR_BLACK, COLOR_MAROON, COLOR_GREEN, COLOR_OLIVE, COLOR_NAVY, COLOR_PURPLE, COLOR_TEAL, COLOR_SILVER,
+                            COLOR_GRAY, COLOR_RED, COLOR_LIME, COLOR_YELLOW, COLOR_BLUE, COLOR_FUCHIA, COLOR_AQUA, COLOR_WHITE};
+
+BOOL pixel_color_code_to_rgb(WORD code, COLORREF* color){
+    if(code >= 16){
+        return FALSE;
+    }
+    *color = pixelColorList[code];
+    return TRUE;
+}
+
 typedef enum ControlKeyGroup{
     CTRL_GROUP_CURSOR = 0,
     CTRL_GROUP_LH_TOOLBOX = 1,
@@ -161,15 +198,15 @@ long FAR PASCAL _export WndProcMain(HWND hwnd, UINT message, UINT wParam, LONG l
     static short cxBlock, cyBlock;
     static short canvasSize;
     static short counter;
-    char szBuffer[80];
-    short nLength;
+    //char szBuffer[80];
+    //short nLength;
     HDC hdc;
     PAINTSTRUCT ps;
-    RECT rect;
+    //RECT rect;
     static short cxChar, cxCaps, cyChar;
     TEXTMETRIC tm;
     POINT lpMousePoint;
-    HBRUSH hBrush;
+    //HBRUSH hBrush;
     static BYTE CTRL_WASD = CTRL_GROUP_CURSOR;
     static BYTE CTRL_HJKL = CTRL_GROUP_CURSOR;
     static BYTE CTRL_ARROWS = CTRL_GROUP_CURSOR;
@@ -380,29 +417,22 @@ long FAR PASCAL _export WndProcCanvas(HWND hwnd, UINT message, UINT wParam, LONG
     static HPEN hPen;
     static short xSel, ySel;
     HBRUSH hBrush;
-    POINT lpMousePoint, lpPoint;
-    WORD pixelColor, colorRed, colorBlue, colorGreen;
-    WORD newColorR, newColorG, newColorB;
+    POINT lpPoint;
+    WORD colorCode, newColorCode;
     COLORREF newColor;
     WORD wordAddress, wordMask;
     BYTE dataShift;
-    char szBuffer[40];
-    short nLength;
+    //char szBuffer[40];
+    //short nLength;
 
 
     switch(message){
         case WM_CREATE:{
-            for(x=0; x<PIXEL_COUNT; x+=2){ //
-                // using GetR/G/BValue causes truncation warning, so I'm doing this manually
-                newColorR = (WORD)((COLOR_WHITE & 0x000000FF)>>0);
-                newColorG = (WORD)((COLOR_WHITE & 0x0000FF00)>>8);                
-                newColorB = (WORD)((COLOR_WHITE & 0x00FF0000)>>16);
-
-                SetWindowWord(hwnd, x,                 (newColorR<<8) | (newColorR) );
-                SetWindowWord(hwnd, x + PIXEL_COUNT,   (newColorG<<8) | (newColorG) );                
-                SetWindowWord(hwnd, x + 2*PIXEL_COUNT, (newColorB<<8) | (newColorB) );
+            for(x=0; x<PIXEL_COUNT; x+=2){ 
+                newColorCode = PixelColorCodeWhite;
+                SetWindowWord(hwnd, x, (newColorCode<<8) | (newColorCode & 0xFF) );
             }
-            hPen = CreatePen(PS_SOLID, 1, RGB(128, 128, 128));
+            hPen = CreatePen(PS_SOLID, 1, COLOR_SILVER);
             return 0;
         }
         case WM_SIZE:{
@@ -428,23 +458,18 @@ long FAR PASCAL _export WndProcCanvas(HWND hwnd, UINT message, UINT wParam, LONG
             if(pixel % 2 == 0){
                 wordMask = 0xFF00;
                 dataShift = 0;
-                newColor = COLOR_GREEN;
+                newColorCode = PixelColorCodeGreen;
             }else{
                 wordMask = 0x00FF;
                 dataShift = 8;
-                newColor = COLOR_BLUE;
+                newColorCode = PixelColorCodeBlue;
             }
 
-            colorRed = GetWindowWord(hwnd, wordAddress + 0);
-            colorGreen = GetWindowWord(hwnd, wordAddress + PIXEL_COUNT);            
-            colorBlue = GetWindowWord(hwnd, wordAddress + 2*PIXEL_COUNT);
-
-            SetWindowWord(hwnd, wordAddress + 0,             (colorRed & wordMask) | (GetRValue(newColor) << dataShift));
-            SetWindowWord(hwnd, wordAddress + PIXEL_COUNT,   (colorGreen & wordMask) | (GetGValue(newColor) << dataShift));
-            SetWindowWord(hwnd, wordAddress + 2*PIXEL_COUNT, (colorBlue & wordMask) | (GetBValue(newColor) << dataShift));
+            colorCode = GetWindowWord(hwnd, wordAddress);
+            SetWindowWord(hwnd, wordAddress, (colorCode & wordMask) | (newColorCode << dataShift));
 
             hdc = GetDC(hwnd);
-            hBrush = CreateSolidBrush(RGB(0xFF, 0x00, 0xFF));
+            hBrush = CreateSolidBrush(COLOR_FUCHIA);
             
             lpPoint.x = x - x%cxBlock;
             lpPoint.y = y - y%cyBlock;
@@ -496,12 +521,14 @@ long FAR PASCAL _export WndProcCanvas(HWND hwnd, UINT message, UINT wParam, LONG
                     wordMask = 0xFF00;
                     dataShift = 8;
                 }
+                colorCode = (BYTE)((GetWindowWord(hwnd, wordAddress + 0) & wordMask) >> dataShift);
 
-                colorRed = (BYTE)((GetWindowWord(hwnd, wordAddress + 0) & wordMask) >> dataShift);
-                colorGreen = (BYTE)((GetWindowWord(hwnd, wordAddress + PIXEL_COUNT) & wordMask) >> dataShift);
-                colorBlue = (BYTE)((GetWindowWord(hwnd, wordAddress + 2*PIXEL_COUNT) & wordMask) >> dataShift);
+                if(FALSE == pixel_color_code_to_rgb(colorCode, &newColor)){
+                    MessageBeep(1);
+                    newColor = COLOR_BLACK; //TODO signal error
+                }
 
-                hBrush = CreateSolidBrush(RGB(colorRed, colorGreen, colorBlue));
+                hBrush = CreateSolidBrush(newColor);
 
                 rect.left = x*cxBlock + 1;
                 rect.top = y*cyBlock + 1;
