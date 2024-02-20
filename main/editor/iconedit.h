@@ -9,6 +9,11 @@
 
 long FAR PASCAL _export WndProcMain(HWND, UINT, UINT, LONG);
 
+#define CHILD_ID_CANVAS 1
+#define CHILD_ID_LOG 2
+#define CHILD_ID_TOOLBAR 3
+#define CHILD_ID_COLORBOX 4
+
 // Macro functions
 #define min(a,b) (((a) < (b)) ? (a) : (b))
 #define max(a,b) (((a) > (b)) ? (a) : (b))
