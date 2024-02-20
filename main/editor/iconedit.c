@@ -1,89 +1,23 @@
 #include <WINDOWS.H>  
 #include <stdio.h>
 
+#include "iconedit.h"
+#include "canvas.h"
+#include "toolbar.h"
+#include "colorbox.h"
+#include "log.h"
 
-#define min(a,b) (((a) < (b)) ? (a) : (b))
-#define max(a,b) (((a) > (b)) ? (a) : (b))
-
-#ifndef WIN31                       
-#define FAR  
-#define PASCAL  
-#define _export
-typedef char* LPSTR;
-typedef const char* LPCSTR;
-#endif                                  
+// As-implemented, the cursor is not bounded here
+// This is intentional since eventually the canvas selector will be shown w/ a rectangle instead of the cursor
+void MoveCursor(short xAmount, short yAmount){
+    POINT lpCursorPoint;
+    GetCursorPos(&lpCursorPoint);
+    lpCursorPoint.x += xAmount;
+    lpCursorPoint.y += yAmount;
+    SetCursorPos(lpCursorPoint.x, lpCursorPoint.y);
+    return;
+}                            
                                     
-long FAR PASCAL _export WndProcMain(HWND, UINT, UINT, LONG);
-long FAR PASCAL _export WndProcToolbar(HWND, UINT, UINT, LONG);
-long FAR PASCAL _export WndProcCanvas(HWND, UINT, UINT, LONG);
-long FAR PASCAL _export WndProcLog(HWND, UINT, UINT, LONG);
-
-char szNameToolbar[] = "Toolbar";
-char szNameCanvas[] = "Canvas";
-char szNameLog[] = "Log";
-LPSTR buffer = "1234567890";
-
-#define TOOLBAR_ROWS 10
-#define TOOLBAR_COLS 2
-#define CANVAS_DIM 32
-#define PIXEL_COUNT CANVAS_DIM * CANVAS_DIM
-#define PIXEL_CHANNEL_COUNT 3 //red, green, blue
-#define PIXEL_CHANNEL_BYTES 1 //0-255
-#define FRAME_BUFFER_BYTE_COUNT PIXEL_COUNT * PIXEL_CHANNEL_COUNT * PIXEL_CHANNEL_BYTES
-
-
-#define COLOR_BLACK (RGB(0, 0, 0))
-#define COLOR_GRAY (RGB(128, 128, 128))
-
-#define COLOR_RED (RGB(255, 0, 0))
-#define COLOR_MAROON (RGB(128, 0, 0))
-
-#define COLOR_LIME (RGB(0, 255, 0))
-#define COLOR_GREEN (RGB(0, 128, 0))
-
-#define COLOR_YELLOW (RGB(255, 255, 0))
-#define COLOR_OLIVE (RGB(128, 128, 0))
-
-#define COLOR_BLUE (RGB(0, 0, 255))
-#define COLOR_NAVY (RGB(0, 0, 128))
-
-#define COLOR_FUCHIA (RGB(255, 0, 255))
-#define COLOR_PURPLE (RGB(128, 0, 128))
-
-#define COLOR_AQUA (RGB(0, 255, 255))
-#define COLOR_TEAL (RGB(0, 128, 128))
-
-#define COLOR_WHITE (RGB(255, 255, 255))
-#define COLOR_SILVER (RGB(192, 192, 192))
-
-typedef enum PixelColorCode{
-    PixelColorCodeBlack = 0,
-    PixelColorCodeGray = 8,
-    
-    PixelColorCodeMaroon = 1,
-    PixelColorCodeRed = 9,
-    
-    PixelColorCodeGreen = 2,
-    PixelColorCodeLime = 10,
-    
-    PixelColorCodeOlive = 3,
-    PixelColorCodeYellow = 11,
-    
-    PixelColorCodeNavy = 4,
-    PixelColorCodeBlue = 12,
-    
-    PixelColorCodePurple = 5,
-    PixelColorCodeFuchia = 13,
-    
-    PixelColorCodeTeal = 6,
-    PixelColorCodeAqua = 14,
-
-    PixelColorCodeSilver = 7,
-    PixelColorCodeWhite = 15
-} PixelColorCode_e;
-
-COLORREF pixelColorList[] = {COLOR_BLACK, COLOR_MAROON, COLOR_GREEN, COLOR_OLIVE, COLOR_NAVY, COLOR_PURPLE, COLOR_TEAL, COLOR_SILVER,
-                            COLOR_GRAY, COLOR_RED, COLOR_LIME, COLOR_YELLOW, COLOR_BLUE, COLOR_FUCHIA, COLOR_AQUA, COLOR_WHITE};
 
 BOOL pixel_color_code_to_rgb(WORD code, COLORREF* color){
     if(code >= 16){
@@ -93,26 +27,8 @@ BOOL pixel_color_code_to_rgb(WORD code, COLORREF* color){
     return TRUE;
 }
 
-typedef enum ControlKeyGroup{
-    CTRL_GROUP_CURSOR = 0,
-    CTRL_GROUP_LH_TOOLBOX = 1,
-    CTRL_GROUP_RH_TOOLBOX = 2
-} ControlKeyGroup_e;
 
-typedef enum MovementDirection{
-    MOVEMENT_LEFT = 0,
-    MOVEMENT_RIGHT = 1,
-    MOVEMENT_UP = 2,
-    MOVEMENT_DOWN = 3,
-    MOVEMENT_UPRIGHT = 4,
-    MOVEMENT_RIGHTUP = 4,
-    MOVEMENT_UPLEFT = 5,
-    MOVEMENT_LEFTUP = 5,
-    MOVEMENT_DOWNRIGHT = 6,
-    MOVEMENT_RIGHTDOWN = 6,
-    MOVEMENT_DOWNLEFT = 7,
-    MOVEMENT_LEFTDOWN = 7
-} MovementDirection_e;
+
 
 int PASCAL WinMain(HANDLE hInstance, HANDLE hPrevInstance, LPSTR lpszCmdParam, int nCmdShow){
     static char szNameApp[] = "CharacterCreator";
@@ -139,6 +55,13 @@ int PASCAL WinMain(HANDLE hInstance, HANDLE hPrevInstance, LPSTR lpszCmdParam, i
         wndclass.cbWndExtra = sizeof(WORD);
         wndclass.hIcon = NULL;
         wndclass.lpszClassName = szNameToolbar;
+        RegisterClass(&wndclass);
+
+        // Child window - color pane
+        wndclass.lpfnWndProc = WndProcColorBox;
+        wndclass.cbWndExtra = sizeof(WORD)*2; //selected foreground and background color
+        wndclass.hIcon = NULL;
+        wndclass.lpszClassName = szNameColorBox;
         RegisterClass(&wndclass);
         
         // Child window - canvas
@@ -180,19 +103,10 @@ int PASCAL WinMain(HANDLE hInstance, HANDLE hPrevInstance, LPSTR lpszCmdParam, i
     return msg.wParam;
 }
 
-// As-implemented, the cursor is not bounded here
-// This is intentional since eventually the canvas selector will be shown w/ a rectangle instead of the cursor
-void MoveCursor(short xAmount, short yAmount){
-    POINT lpCursorPoint;
-    GetCursorPos(&lpCursorPoint);
-    lpCursorPoint.x += xAmount;
-    lpCursorPoint.y += yAmount;
-    SetCursorPos(lpCursorPoint.x, lpCursorPoint.y);
-    return;
-}
+
 
 long FAR PASCAL _export WndProcMain(HWND hwnd, UINT message, UINT wParam, LONG lParam){
-    static HWND hwndToolbar;
+    static HWND hwndToolbar, hwndColorBox;
     static HWND hwndCanvas;
     static HWND hwndLog;
     static short cxBlock, cyBlock;
@@ -200,9 +114,10 @@ long FAR PASCAL _export WndProcMain(HWND hwnd, UINT message, UINT wParam, LONG l
     static short counter;
     //char szBuffer[80];
     //short nLength;
+    short x, y;
     HDC hdc;
     PAINTSTRUCT ps;
-    //RECT rect;
+    RECT rect;
     static short cxChar, cxCaps, cyChar;
     TEXTMETRIC tm;
     POINT lpMousePoint;
@@ -225,6 +140,11 @@ long FAR PASCAL _export WndProcMain(HWND hwnd, UINT message, UINT wParam, LONG l
                                         0, 0, 0, 0,
                                         hwnd, 1, GetWindowWord(hwnd, GWW_HINSTANCE), NULL);
 
+            hwndColorBox = CreateWindow(szNameColorBox, NULL, WS_CHILDWINDOW | WS_VISIBLE,
+                                        0, 0, 0, 0,
+                                        hwnd, 1, GetWindowWord(hwnd, GWW_HINSTANCE), NULL);
+
+
             hwndCanvas = CreateWindow(szNameCanvas, NULL, WS_CHILDWINDOW | WS_VISIBLE,
                                         0, 0, 0, 0,
                                         hwnd, 1, GetWindowWord(hwnd, GWW_HINSTANCE), NULL);
@@ -236,14 +156,14 @@ long FAR PASCAL _export WndProcMain(HWND hwnd, UINT message, UINT wParam, LONG l
             return 0;
             }
         case WM_SIZE:{
-            cxBlock = LOWORD(lParam) / 5;
-            cyBlock = HIWORD(lParam) / 5;
-            canvasSize = min( (cxBlock<<2) - (cxBlock<<2)%32, ((cyBlock<<2) - (cyBlock<<2)%32));
+            cxBlock = LOWORD(lParam) / 6;
+            cyBlock = HIWORD(lParam) / 6;
+            canvasSize = min( ALIGN(4*cxBlock, 32), ALIGN(4*cyBlock, 32));
 
-            // MoveWindow(hwndToolbar, 0, cyBlock, cxBlock, cyBlock*3, TRUE);
-            MoveWindow(hwndToolbar, 0, 0, cxBlock, cyBlock<<2, TRUE);
+            MoveWindow(hwndColorBox, 5*cxBlock, 0, cxBlock, cyBlock, TRUE);
+            MoveWindow(hwndToolbar, 0, 0, cxBlock, 3*cyBlock, TRUE);
             MoveWindow(hwndCanvas, cxBlock, 0, canvasSize, canvasSize, TRUE);
-            MoveWindow(hwndLog, 0, cyBlock<<2, LOWORD(lParam), cyBlock, TRUE);
+            MoveWindow(hwndLog, cxBlock, 5*cyBlock, 4*cxBlock, cyBlock, TRUE);
 
             lpMousePoint.x = cxBlock;
             lpMousePoint.y = 0;
@@ -343,6 +263,17 @@ long FAR PASCAL _export WndProcMain(HWND hwnd, UINT message, UINT wParam, LONG l
             // nLength = wsprintf(szBuffer, "cxBlock %d, cyBlock %d, canvasSize %d", cxBlock, cyBlock, canvasSize);
             hdc = BeginPaint(hwnd, &ps);
             // TextOut(hdc, 10, cyBlock<<2, szBuffer, nLength);
+            GetClientRect(hwnd, &rect);   
+
+            Rectangle(hdc, rect.left, rect.top, rect.right, rect.bottom);
+
+            for(x=0; x<6; x++){
+                for(y=0; y<6; y++){
+                    Rectangle(hdc, rect.left + x*cxBlock, rect.top + y*cyBlock, 
+                                    rect.left + x*cxBlock +cxBlock, rect.top + y*cyBlock + cyBlock);
+                }
+            }
+
             EndPaint(hwnd, &ps);
             return 0;
 
@@ -408,6 +339,46 @@ long FAR PASCAL _export WndProcToolbar(HWND hwnd, UINT message, UINT wParam, LON
     return DefWindowProc(hwnd, message, wParam, lParam);
 }
 
+
+long FAR PASCAL _export WndProcColorBox(HWND hwnd, UINT message, UINT wParam, LONG lParam){
+    HDC hdc;
+    PAINTSTRUCT ps;
+    RECT rect;
+    static short cxBlock, cyBlock;
+    short x, y;
+
+    switch(message){
+        case WM_CREATE:
+            SetWindowWord(hwnd, 0, PixelColorCodeBlack);
+            SetWindowWord(hwnd, 1, PixelColorCodeWhite);            
+            return 0;
+        
+        case WM_SIZE:
+            cxBlock = LOWORD(lParam) / COLORBOX_COLS;
+            cyBlock = HIWORD(lParam) / COLORBOX_ROWS;
+            return 0;
+
+        case WM_PAINT:
+            hdc = BeginPaint(hwnd, &ps);
+            GetClientRect(hwnd, &rect);   
+
+            Rectangle(hdc, rect.left, rect.top, rect.right, rect.bottom);
+
+            for(x=0; x<COLORBOX_COLS; x++){
+                for(y=0; y<COLORBOX_ROWS; y++){
+                    Rectangle(hdc, rect.left + x*cxBlock, rect.top + y*cyBlock, 
+                                    rect.left + x*cxBlock +cxBlock, rect.top + y*cyBlock + cyBlock);
+                }
+            }
+
+         
+            EndPaint(hwnd, &ps);
+            return 0;
+    }
+    return DefWindowProc(hwnd, message, wParam, lParam);
+}
+
+
 long FAR PASCAL _export WndProcCanvas(HWND hwnd, UINT message, UINT wParam, LONG lParam){
     HDC hdc;
     PAINTSTRUCT ps;
@@ -471,8 +442,8 @@ long FAR PASCAL _export WndProcCanvas(HWND hwnd, UINT message, UINT wParam, LONG
             hdc = GetDC(hwnd);
             hBrush = CreateSolidBrush(COLOR_FUCHIA);
             
-            lpPoint.x = x - x%cxBlock;
-            lpPoint.y = y - y%cyBlock;
+            lpPoint.x = ALIGN(x, cxBlock);
+            lpPoint.y = ALIGN(y, cyBlock);
 
             rect.left = lpPoint.x+1;
             rect.top = lpPoint.y+1;
@@ -560,6 +531,7 @@ long FAR PASCAL _export WndProcCanvas(HWND hwnd, UINT message, UINT wParam, LONG
     }
     return DefWindowProc(hwnd, message, wParam, lParam);
 }
+
 
 long FAR PASCAL _export WndProcLog(HWND hwnd, UINT message, UINT wParam, LONG lParam){
     HDC hdc;
