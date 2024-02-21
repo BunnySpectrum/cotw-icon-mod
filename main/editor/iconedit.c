@@ -66,7 +66,7 @@ int PASCAL WinMain(HANDLE hInstance, HANDLE hPrevInstance, LPSTR lpszCmdParam, i
         
         // Child window - canvas
         wndclass.lpfnWndProc = WndProcCanvas;
-        wndclass.cbWndExtra = sizeof(BYTE)*FRAME_BUFFER_BYTE_COUNT;
+        wndclass.cbWndExtra = sizeof(WORD)*(2);
         wndclass.hIcon = NULL;
         wndclass.lpszClassName = szNameCanvas;
         RegisterClass(&wndclass);
@@ -264,7 +264,7 @@ long FAR PASCAL _export WndProcMain(HWND hwnd, UINT message, UINT wParam, LONG l
             return 0;
         }
 
-        case WM_PAINT:
+        case WM_PAINT:{
             // nLength = wsprintf(szBuffer, "cxBlock %d, cyBlock %d, canvasSize %d", cxBlock, cyBlock, canvasSize);
             hdc = BeginPaint(hwnd, &ps);
             // TextOut(hdc, 10, cyBlock<<2, szBuffer, nLength);
@@ -281,11 +281,13 @@ long FAR PASCAL _export WndProcMain(HWND hwnd, UINT message, UINT wParam, LONG l
 
             EndPaint(hwnd, &ps);
             return 0;
+        }
         
         case WM_COMMAND:{
             // MessageBox(hwnd, "WM_COMMAND", "IconEdit", MB_OK);
             if(wParam == CHILD_ID_COLORBOX){
-                SetWindowWord(hwndCanvas, PIXEL_COUNT, (WORD)lParam);
+                SetWindowWord(hwndCanvas, CANVAS_FORE_COLOR, LOWORD(lParam));
+                SetWindowWord(hwndCanvas, CANVAS_BACK_COLOR, HIWORD(lParam));
             }
             return 0;
         }
@@ -324,7 +326,7 @@ long FAR PASCAL _export WndProcToolbar(HWND hwnd, UINT message, UINT wParam, LON
             cyBlock = HIWORD(lParam) / TOOLBAR_ROWS;
             return 0;
 
-        case WM_PAINT:
+        case WM_PAINT:{
             hdc = BeginPaint(hwnd, &ps);
             GetClientRect(hwnd, &rect);   
 
@@ -337,17 +339,9 @@ long FAR PASCAL _export WndProcToolbar(HWND hwnd, UINT message, UINT wParam, LON
                 }
             }
 
-            // Draw X
-            // MoveTo(hdc, rect.left, rect.top);
-            // LineTo(hdc, rect.right, rect.bottom);
-            // MoveTo(hdc, rect.left, rect.bottom);
-            // LineTo(hdc, rect.right, rect.top);
-            
-
-            // DrawText(hdc, "Toolbar", -1, &rect, 
-            //             DT_SINGLELINE | DT_CENTER | DT_VCENTER);
             EndPaint(hwnd, &ps);
             return 0;
+        }
     }
     return DefWindowProc(hwnd, message, wParam, lParam);
 }
@@ -458,20 +452,18 @@ long FAR PASCAL _export WndProcCanvas(HWND hwnd, UINT message, UINT wParam, LONG
     static short xSel, ySel;
     HBRUSH hBrush;
     POINT lpPoint;
-    WORD colorCode, newColorCode;
+    BYTE colorCode, newColorCode;
     // WORD activeColorForeground;
     COLORREF newColor;
-    WORD wordAddress, wordMask;
-    BYTE dataShift;
     //char szBuffer[40];
     //short nLength;
+    static BYTE pixelFrame[PIXEL_COUNT];
 
 
     switch(message){
         case WM_CREATE:{
-            for(x=0; x<PIXEL_COUNT; x+=2){ 
-                newColorCode = PixelColorCodeWhite;
-                SetWindowWord(hwnd, x, (newColorCode<<8) | (newColorCode & 0xFF) );
+            for(x=0; x<PIXEL_COUNT; x++){ 
+                pixelFrame[x] = (BYTE)PixelColorCodeWhite;
             }
             hPen = CreatePen(PS_SOLID, 1, COLOR_SILVER);
             return 0;
@@ -496,22 +488,31 @@ long FAR PASCAL _export WndProcCanvas(HWND hwnd, UINT message, UINT wParam, LONG
                 return 0;
             }
 
-            wordAddress = pixel & 0xFFFE;            
+            // wordAddress = pixel & 0xFFFE;            
 
-            if(pixel % 2 == 0){
-                wordMask = 0xFF00;
-                dataShift = 0;
-                newColorCode = PixelColorCodeGreen;
-            }else{
-                wordMask = 0x00FF;
-                dataShift = 8;
-                newColorCode = PixelColorCodeBlue;
-            }
+            // if(pixel % 2 == 0){
+            //     wordMask = 0xFF00;
+            //     dataShift = 0;
+            //     newColorCode = (BYTE)PixelColorCodeGreen;
+            // }else{
+            //     wordMask = 0x00FF;
+            //     dataShift = 8;
+            //     newColorCode = (BYTE)PixelColorCodeBlue;
+            // }
 
-            newColorCode = GetWindowWord(hwnd, PIXEL_COUNT);
+            newColorCode = (BYTE)GetWindowWord(hwnd, CANVAS_FORE_COLOR);
+            // oldColorCode = pixelFrame[pixel];
 
-            colorCode = GetWindowWord(hwnd, wordAddress);
-            SetWindowWord(hwnd, wordAddress, (colorCode & wordMask) | (newColorCode << dataShift));
+            // colorCode = (oldColorCode & wordMask) | (newColorCode << dataShift);
+            
+            // #if CANVAS_DATA == CANVAS_DATA_WW
+            //     SetWindowWord(hwnd, wordAddress, colorCode);
+            // #elif CANVAS_DATA == CANVAS_DATA_STATIC
+            pixelFrame[pixel] = newColorCode;
+            // #else
+            //     #error "CANVAS_DATA must be one of [CANVAS_DATA_WW, CANVAS_DATA_STATIC]"
+            // #endif
+            
 
             hdc = GetDC(hwnd);
             pixel_color_code_to_rgb(newColorCode, &newColor);
@@ -558,20 +559,11 @@ long FAR PASCAL _export WndProcCanvas(HWND hwnd, UINT message, UINT wParam, LONG
                 x = pixel % 32;
                 y = pixel / 32;
 
-                wordAddress = pixel & 0xFFFE;
-                
-                if(pixel % 2 == 0){
-                    wordMask = 0x00FF;
-                    dataShift = 0;
-                }else{
-                    wordMask = 0xFF00;
-                    dataShift = 8;
-                }
-                colorCode = (BYTE)((GetWindowWord(hwnd, wordAddress + 0) & wordMask) >> dataShift);
+                colorCode = pixelFrame[pixel];
 
                 if(FALSE == pixel_color_code_to_rgb(colorCode, &newColor)){
                     MessageBeep(1);
-                    newColor = COLOR_BLACK; //TODO signal error
+                    newColor = COLOR_BLACK; //TODO signal error w/ dialog box w/ option to quit
                 }
 
                 hBrush = CreateSolidBrush(newColor);
@@ -585,16 +577,6 @@ long FAR PASCAL _export WndProcCanvas(HWND hwnd, UINT message, UINT wParam, LONG
                 DeleteObject(hBrush);
             }
 
-            // rect.left = 4*cxBlock;
-            // rect.right = 28*cxBlock;
-            // rect.top = 4*cyBlock;
-            // rect.bottom = 28*cyBlock;
-
-
-            
-            // TextOut(hdc, rect.left, rect.top, szBuffer, nLength);
-            // DrawText(hdc, "Test", -1, &rect, 
-                        // DT_SINGLELINE | DT_CENTER | DT_VCENTER);
             EndPaint(hwnd, &ps);
             return 0;
 
