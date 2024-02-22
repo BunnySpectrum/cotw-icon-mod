@@ -9,7 +9,7 @@
 
 // As-implemented, the cursor is not bounded here
 // This is intentional since eventually the canvas selector will be shown w/ a rectangle instead of the cursor
-void MoveCursor(short xAmount, short yAmount){
+void move_cursor(short xAmount, short yAmount){
     POINT lpCursorPoint;
     GetCursorPos(&lpCursorPoint);
     lpCursorPoint.x += xAmount;
@@ -27,6 +27,32 @@ BOOL pixel_color_code_to_rgb(WORD code, COLORREF* color){
     return TRUE;
 }
 
+BOOL canvas_draw_brush(HWND hwnd, HDC* hdc, BYTE* pixelFrame, int pixel, int x, int y, short width, short height){
+    COLORREF newColor;
+    HBRUSH hBrush;
+    POINT lpPoint;
+    RECT rect;
+    BYTE newColorCode;
+
+    newColorCode = (BYTE)GetWindowWord(hwnd, CanvasWordForeColor);
+    pixelFrame[pixel] = newColorCode;  
+
+    pixel_color_code_to_rgb(newColorCode, &newColor);
+    hBrush = CreateSolidBrush(newColor);
+
+    lpPoint.x = ALIGN(x, width);
+    lpPoint.y = ALIGN(y, height);
+
+    rect.left = lpPoint.x+1;
+    rect.top = lpPoint.y+1;
+    rect.right = rect.left + width - 2 ;
+    rect.bottom = rect.top + height - 2;
+
+    FillRect(*hdc, &rect, hBrush);
+    DeleteObject(hBrush);
+
+    return TRUE;
+}
 
 
 
@@ -52,28 +78,28 @@ int PASCAL WinMain(HANDLE hInstance, HANDLE hPrevInstance, LPSTR lpszCmdParam, i
 
         // Child window - toolbar
         wndclass.lpfnWndProc = WndProcToolbar;
-        wndclass.cbWndExtra = sizeof(WORD);
+        wndclass.cbWndExtra = sizeof(WORD)*(TOOLBAR_EXTRA_WORDS);
         wndclass.hIcon = NULL;
         wndclass.lpszClassName = szNameToolbar;
         RegisterClass(&wndclass);
 
         // Child window - color pane
         wndclass.lpfnWndProc = WndProcColorBox;
-        wndclass.cbWndExtra = sizeof(WORD)*2; //selected foreground and background color
+        wndclass.cbWndExtra = sizeof(WORD)*(COLORBOX_EXTRA_WORDS);;
         wndclass.hIcon = NULL;
         wndclass.lpszClassName = szNameColorBox;
         RegisterClass(&wndclass);
         
         // Child window - canvas
         wndclass.lpfnWndProc = WndProcCanvas;
-        wndclass.cbWndExtra = sizeof(WORD)*(2);
+        wndclass.cbWndExtra = sizeof(WORD)*(CANVAS_EXTRA_WORDS);
         wndclass.hIcon = NULL;
         wndclass.lpszClassName = szNameCanvas;
         RegisterClass(&wndclass);
         
         // Child window - log
         wndclass.lpfnWndProc = WndProcLog;
-        wndclass.cbWndExtra = sizeof(WORD);
+        wndclass.cbWndExtra = sizeof(WORD)*(LOG_EXTRA_WORDS);;
         wndclass.hIcon = NULL;
         wndclass.lpszClassName = szNameLog;
         RegisterClass(&wndclass);
@@ -188,76 +214,88 @@ long FAR PASCAL _export WndProcMain(HWND hwnd, UINT message, UINT wParam, LONG l
 
                 case VK_LEFT:
                     if(CTRL_ARROWS == CTRL_GROUP_CURSOR){
-                        MoveCursor(-1 * canvasSize/CANVAS_DIM, 0);
+                        move_cursor
+                    (-1 * canvasSize/CANVAS_DIM, 0);
                     }
                     break;
 
                 case 'A':
                     if(CTRL_WASD == CTRL_GROUP_CURSOR){
-                        MoveCursor(-1 * canvasSize/CANVAS_DIM, 0);
+                        move_cursor
+                    (-1 * canvasSize/CANVAS_DIM, 0);
                     }
                     break;
 
                 case 'H':
                     if(CTRL_HJKL == CTRL_GROUP_CURSOR){
-                        MoveCursor(-1*canvasSize/CANVAS_DIM, 0);
+                        move_cursor
+                    (-1*canvasSize/CANVAS_DIM, 0);
                     }
                     break; 
 
 
                 case VK_RIGHT:
                     if(CTRL_ARROWS == CTRL_GROUP_CURSOR){
-                        MoveCursor(canvasSize/CANVAS_DIM, 0);  
+                        move_cursor
+                    (canvasSize/CANVAS_DIM, 0);  
                     }
                     break;
                 
                 case 'D':
                     if(CTRL_WASD == CTRL_GROUP_CURSOR){
-                        MoveCursor(canvasSize/CANVAS_DIM, 0); 
+                        move_cursor
+                    (canvasSize/CANVAS_DIM, 0); 
                     }
                     break; 
 
                 case 'L':
                     if(CTRL_HJKL == CTRL_GROUP_CURSOR){
-                        MoveCursor(canvasSize/CANVAS_DIM, 0);
+                        move_cursor
+                    (canvasSize/CANVAS_DIM, 0);
                     }
                     break; 
 
 
                 case VK_UP:
                     if(CTRL_ARROWS == CTRL_GROUP_CURSOR){
-                        MoveCursor(0, -1*canvasSize/CANVAS_DIM); 
+                        move_cursor
+                    (0, -1*canvasSize/CANVAS_DIM); 
                     }
                     break;
                 
                 case 'W':
                     if(CTRL_WASD == CTRL_GROUP_CURSOR){
-                        MoveCursor(0, -1*canvasSize/CANVAS_DIM);
+                        move_cursor
+                    (0, -1*canvasSize/CANVAS_DIM);
                     }
                     break; 
 
                 case 'K':
                     if(CTRL_HJKL == CTRL_GROUP_CURSOR){
-                        MoveCursor(0, -1*canvasSize/CANVAS_DIM);
+                        move_cursor
+                    (0, -1*canvasSize/CANVAS_DIM);
                     }
                     break; 
 
 
                 case VK_DOWN:
                     if(CTRL_ARROWS == CTRL_GROUP_CURSOR){
-                        MoveCursor(0, canvasSize/CANVAS_DIM);
+                        move_cursor
+                    (0, canvasSize/CANVAS_DIM);
                     }
                     break;
 
                 case 'S':
                     if(CTRL_WASD == CTRL_GROUP_CURSOR){
-                        MoveCursor(0, canvasSize/CANVAS_DIM);                    
+                        move_cursor
+                    (0, canvasSize/CANVAS_DIM);                    
                     }
                     break;
 
                 case 'J':
                     if(CTRL_HJKL == CTRL_GROUP_CURSOR){
-                        MoveCursor(0, canvasSize/CANVAS_DIM);                    
+                        move_cursor
+                    (0, canvasSize/CANVAS_DIM);                    
                     }
                     break; 
             }
@@ -286,8 +324,8 @@ long FAR PASCAL _export WndProcMain(HWND hwnd, UINT message, UINT wParam, LONG l
         case WM_COMMAND:{
             // MessageBox(hwnd, "WM_COMMAND", "IconEdit", MB_OK);
             if(wParam == CHILD_ID_COLORBOX){
-                SetWindowWord(hwndCanvas, CANVAS_FORE_COLOR, LOWORD(lParam));
-                SetWindowWord(hwndCanvas, CANVAS_BACK_COLOR, HIWORD(lParam));
+                SetWindowWord(hwndCanvas, CanvasWordForeColor, LOWORD(lParam));
+                SetWindowWord(hwndCanvas, CanvasWordBackColor, HIWORD(lParam));
             }
             return 0;
         }
@@ -318,7 +356,7 @@ long FAR PASCAL _export WndProcToolbar(HWND hwnd, UINT message, UINT wParam, LON
 
     switch(message){
         case WM_CREATE:
-            SetWindowWord(hwnd, 0, 0);
+            SetWindowWord(hwnd, ToolbarWordTool, ToolboxToolBrush);       
             return 0;
         
         case WM_SIZE:
@@ -342,6 +380,7 @@ long FAR PASCAL _export WndProcToolbar(HWND hwnd, UINT message, UINT wParam, LON
             EndPaint(hwnd, &ps);
             return 0;
         }
+        
     }
     return DefWindowProc(hwnd, message, wParam, lParam);
 }
@@ -364,8 +403,8 @@ long FAR PASCAL _export WndProcColorBox(HWND hwnd, UINT message, UINT wParam, LO
 
     switch(message){
         case WM_CREATE:
-            SetWindowWord(hwnd, 0, PixelColorCodeBlack);
-            SetWindowWord(hwnd, 1, PixelColorCodeWhite);            
+            SetWindowWord(hwnd, ColorBoxWordForeColor, PixelColorCodeBlack); 
+            SetWindowWord(hwnd, ColorBoxWordBackColor, PixelColorCodeWhite);            
             return 0;
         
         case WM_SIZE:
@@ -462,6 +501,10 @@ long FAR PASCAL _export WndProcCanvas(HWND hwnd, UINT message, UINT wParam, LONG
 
     switch(message){
         case WM_CREATE:{
+            SetWindowWord(hwnd, CanvasWordForeColor, PixelColorCodeBlack);
+            SetWindowWord(hwnd, CanvasWordBackColor, PixelColorCodeWhite); 
+            SetWindowWord(hwnd, CanvasWordTool, CanvasToolBrush); 
+
             for(x=0; x<PIXEL_COUNT; x++){ 
                 pixelFrame[x] = (BYTE)PixelColorCodeWhite;
             }
@@ -476,7 +519,6 @@ long FAR PASCAL _export WndProcCanvas(HWND hwnd, UINT message, UINT wParam, LONG
         
 
         case WM_LBUTTONDOWN:{
-            // MessageBeep(0);
             x = LOWORD(lParam);
             y = HIWORD(lParam);
 
@@ -488,64 +530,36 @@ long FAR PASCAL _export WndProcCanvas(HWND hwnd, UINT message, UINT wParam, LONG
                 return 0;
             }
 
-            // wordAddress = pixel & 0xFFFE;            
-
-            // if(pixel % 2 == 0){
-            //     wordMask = 0xFF00;
-            //     dataShift = 0;
-            //     newColorCode = (BYTE)PixelColorCodeGreen;
-            // }else{
-            //     wordMask = 0x00FF;
-            //     dataShift = 8;
-            //     newColorCode = (BYTE)PixelColorCodeBlue;
-            // }
-
-            newColorCode = (BYTE)GetWindowWord(hwnd, CANVAS_FORE_COLOR);
-            // oldColorCode = pixelFrame[pixel];
-
-            // colorCode = (oldColorCode & wordMask) | (newColorCode << dataShift);
-            
-            // #if CANVAS_DATA == CANVAS_DATA_WW
-            //     SetWindowWord(hwnd, wordAddress, colorCode);
-            // #elif CANVAS_DATA == CANVAS_DATA_STATIC
-            pixelFrame[pixel] = newColorCode;
-            // #else
-            //     #error "CANVAS_DATA must be one of [CANVAS_DATA_WW, CANVAS_DATA_STATIC]"
-            // #endif
-            
-
             hdc = GetDC(hwnd);
-            pixel_color_code_to_rgb(newColorCode, &newColor);
-            hBrush = CreateSolidBrush(newColor);
+
+            switch ((BYTE)GetWindowWord(hwnd, CanvasWordTool)){
+                case CanvasToolBrush:
+                    canvas_draw_brush(hwnd, &hdc, pixelFrame, pixel, x, y, cxBlock, cyBlock);
+                    break;
+                case CanvasToolLine:
+                    ;// switch(line_state, a static flag)
+                    //case FirstClick:
+                    //  set static POINT to click location
+                    //case SecondClick:
+                    //  do draw;
+                    //  reset flag to FirstClick
+                    break;
+                default:
+                    MessageBeep(0);
+                    break; //TODO signal error here
+            }
             
-            lpPoint.x = ALIGN(x, cxBlock);
-            lpPoint.y = ALIGN(y, cyBlock);
-
-            rect.left = lpPoint.x+1;
-            rect.top = lpPoint.y+1;
-            rect.right = rect.left + cxBlock - 2 ;
-            rect.bottom = rect.top + cyBlock - 2;
-
-            // Rectangle(hdc, rect.left-1, rect.top-1, rect.right+1, rect.bottom+1);
-            FillRect(hdc, &rect, hBrush);
-            ReleaseDC(hwnd, hdc);
-            DeleteObject(hBrush);
+            ReleaseDC(hwnd, hdc);            
             ValidateRect(hwnd, NULL);
 
             // If I re-paint every time, the canvas blips.
-            // So only draw the pixel I modified
-            // InvalidateRect(hwnd, NULL, FALSE);
+            // So only draw the pixels I modified
             return 0;
         }
 
         case WM_PAINT:
             hdc = BeginPaint(hwnd, &ps);
             GetClientRect(hwnd, &rect);
-            // nLength = wsprintf(szBuffer, "cxBlock %d, size %d", cxBlock, rect.right - rect.left);
-            
-            // Rectangle(hdc, rect.left, rect.top, rect.left + 32*cxBlock, rect.top + 32*cyBlock);
-            // Rectangle(hdc, rect.left, rect.top, rect.right, rect.bottom);            
-
             SelectObject(hdc, hPen);
 
             for(x=0; x<CANVAS_DIM; x++){
@@ -594,10 +608,13 @@ long FAR PASCAL _export WndProcLog(HWND hwnd, UINT message, UINT wParam, LONG lP
     HDC hdc;
     PAINTSTRUCT ps;
     RECT rect;
+    short x;
 
     switch(message){
         case WM_CREATE:
-            SetWindowWord(hwnd, 0, 0);
+            for (x=0; x<LOG_EXTRA_WORDS; x+=2){
+                SetWindowWord(hwnd, x, 0);
+            } 
             return 0;
 
         case WM_PAINT:

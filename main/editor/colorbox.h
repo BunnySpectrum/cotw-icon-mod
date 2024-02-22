@@ -8,8 +8,14 @@
 #endif 
 
 long FAR PASCAL _export WndProcColorBox(HWND, UINT, UINT, LONG);
-
 char szNameColorBox[] = "Color";
+
+// Get/SetWindowWord offsets
+typedef enum ColorBoxWindowWords{
+    ColorBoxWordForeColor = 0,
+    ColorBoxWordBackColor = 2        
+} ColorBoxWindowWords_e;
+#define COLORBOX_EXTRA_WORDS 2 
 
 #define COLORBOX_COLS 8
 #define COLORBOX_ROWS 2

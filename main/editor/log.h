@@ -10,6 +10,7 @@
 long FAR PASCAL _export WndProcLog(HWND, UINT, UINT, LONG);
 
 char szNameLog[] = "Log";
+#define LOG_EXTRA_WORDS 0 
 
 
 

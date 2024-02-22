@@ -12,8 +12,39 @@ char szNameCanvas[] = "Canvas";
 
 #define CANVAS_DIM 32
 #define PIXEL_COUNT CANVAS_DIM * CANVAS_DIM
-#define CANVAS_FORE_COLOR 0
-#define CANVAS_BACK_COLOR CANVAS_FORE_COLOR + 2
+
+// Get/SetWindowWord offsets
+typedef enum CanvasWindowWords{
+    CanvasWordForeColor = 0,
+    CanvasWordBackColor = 2,
+    CanvasWordTool = 4,        
+} CanvasWindowWords_e;
+#define CANVAS_EXTRA_WORDS 3
+
+// Canvas tools are invoked with selecting a pixel
+typedef enum CanvasTool{
+    CanvasToolBrush = 0,
+    CanvasToolLine,
+    CanvasToolFlood,
+    CanvasToolRect,
+    CanvasToolEllipse, 
+    CanvasToolErase,    
+    CanvasToolSelect,       
+} CanvasTool_e;
+
+// Canvas modifiers affect either the active tool or a section of the canvas
+typedef enum CanvasModifier{
+    CanvasModifierMirrorDraw = 0,
+    CanvasModifierFlipH,
+    CanvasModifierFlipV,
+    CanvasModifierRotate,
+    CanvasModifierInvert,
+    CanvasModifierBorderR,
+    CanvasModifierBorderS,          
+} CanvasModifier_e;
+
+
+
 #define PIXEL_CHANNEL_COUNT 3 //red, green, blue
 #define PIXEL_CHANNEL_BYTES 1 //0-255
 #define FRAME_BUFFER_BYTE_COUNT PIXEL_COUNT * PIXEL_CHANNEL_COUNT * PIXEL_CHANNEL_BYTES
