@@ -9,13 +9,16 @@ Modified from following example programs:
 #include <time.h>
 
 #include "metrics.h"
+#define CALL_MAX 1000
+#define SCRATCH_LENGTH 1000
 
+extern int STKHQQ;
 
-static WORD firstStaticInit[2] = {0x42, 0x20};
 long FAR PASCAL _export WndProc (HWND, UINT, UINT, LONG) ;
 void SizeTheWindow (short *, short *, short *, short *) ;
-static int scratch[5]; 
-static WORD lastStaticUnInit[2];
+static int scratch[SCRATCH_LENGTH]; 
+static int stackPointerMin, stackPointerCurrent, stackPointerStart;
+static int callDepth;
 
 int PASCAL WinMain (HANDLE hInstance, HANDLE hPrevInstance, LPSTR lpszCmdLine, int nCmdShow){
      static char szAppName[] = "Metrics" ;
@@ -24,10 +27,18 @@ int PASCAL WinMain (HANDLE hInstance, HANDLE hPrevInstance, LPSTR lpszCmdLine, i
      MSG         msg ;
      short       xStart, yStart, xClient, yClient ;
      WNDCLASS    wndclass ;
+     int i;
 
+     for(i=0; i<SCRATCH_LENGTH; i++){
+          scratch[i] = 0x4242;
+     }
 
-     __asm mov scratch[0], bp;
-     __asm mov scratch[2], sp;
+     // __asm mov scratch[0], bp;
+     __asm mov stackPointerStart, sp;
+     stackPointerMin = stackPointerStart;
+     stackPointerCurrent = stackPointerStart;
+     callDepth = 1;
+     
      // __asm mov scratch[4], cx;
      // __asm mov scratch[6], di;
      // __asm mov scratch[8], sp;
@@ -58,7 +69,7 @@ int PASCAL WinMain (HANDLE hInstance, HANDLE hPrevInstance, LPSTR lpszCmdLine, i
                           NULL, NULL, hInstance, NULL) ;
                          
 
-     if (!SetTimer (hwnd, ID_TIMER, 1000, NULL))
+     if (!SetTimer (hwnd, ID_TIMER, 200, NULL))
           {
           MessageBox (hwnd, "Too many clocks or timers!",
                       szAppName, MB_ICONEXCLAMATION | MB_OK) ;
@@ -91,26 +102,67 @@ void SizeTheWindow (short *pxStart,  short *pyStart, short *pxClient, short *pyC
      *pyStart  =     GetSystemMetrics (SM_CYSCREEN)   - *pyClient ;
 }
 
-void WndPaint (HWND hwnd, HDC hdc, SystemMetrics_s sysMetrics, ProgramMetrics_s progMetrics, int* extra){
+int fib(int left, int right, int depth){
+     int result;
+     depth--;
+     if(depth <= 0){
+          // Record SP and return
+          __asm mov stackPointerCurrent, sp;
+          stackPointerMin = min(stackPointerMin, stackPointerCurrent);
+          result = ++left;
+     }else{
+          result = fib(++left, right, depth);
+     }
+
+     return result;
+
+}
+
+void WndPaint (HWND hwnd, HDC hdc, SystemMetrics_s sysMetrics, ProgramMetrics_s progMetrics, int* extra, char* status){
      char        cBuffer[80] ;
      RECT        rect ;
      short       nLength ;
      struct tm   *datetime ;
      time_t      lTime ;
      char sign;
+     int fibResult, i;
 
      if(sysMetrics.sign == 1){
           sign = '+';
      }else{
           sign = '-';
      }
+
+     if(*status == '-'){
+          *status = '+';
+     }else{
+          *status = '-';
+     }
      
-     nLength = wsprintf (cBuffer, "Sys %ld (%c%ld)\r\nProg %d: %ld", 
-          sysMetrics.dwCurrFreeSpace, 
-          sign, sysMetrics.dwDiffFree,
-          progMetrics.handle, progMetrics.space);
-     // nLength = wsprintf (cBuffer, "BP 0x%X, SP 0x%X", 
-     // extra[0], extra[1]); 
+     // nLength = wsprintf (cBuffer, "Sys %ld (%c%ld)\r\nProg %d: %ld", 
+     //      sysMetrics.dwCurrFreeSpace, 
+     //      sign, sysMetrics.dwDiffFree,
+     //      progMetrics.handle, progMetrics.space);
+
+     fibResult = fib(0, 1, callDepth);
+
+     nLength = wsprintf (cBuffer, "%c Fib #%d: %d\r\nSP 0x%X -> 0x%X (diff %d); limit 0x%X", *status,
+     callDepth, fibResult,
+     stackPointerStart, stackPointerMin, stackPointerStart - stackPointerMin, STKHQQ);
+
+     callDepth++;
+     if(callDepth > CALL_MAX){
+          callDepth = 1;
+     }
+
+     for(i=0; i<SCRATCH_LENGTH; i++){
+          if(scratch[i] != 0x4242){
+               callDepth = 1;
+               return;
+               // MessageBox (hwnd, "Stack too far", "Oops", MB_ICONEXCLAMATION | MB_OK) ;
+
+          }
+     }
 
      // DrawText (hdc, cBuffer, sprintf (cBuffer, "%.2f megs", dwFreeMem / 1024.0 / 1024.0), &rect, DT_WORDBREAK) ;
 
@@ -132,6 +184,7 @@ long FAR PASCAL _export WndProc (HWND hwnd, UINT message, UINT wParam,
      char          cBuffer [20] ;
      HDC           hdc ;
      PAINTSTRUCT   ps ;
+     static char status = '-';
 
      switch (message)
           {
@@ -148,7 +201,7 @@ long FAR PASCAL _export WndProc (HWND hwnd, UINT message, UINT wParam,
                sysMetrics.dwCurrFreeSpace = GetFreeSpace (0) ;
 
                if (sysMetrics.dwCurrFreeSpace != dwPrevSysFreeSpace){
-                    InvalidateRect (hwnd, NULL, TRUE) ;
+                    // InvalidateRect (hwnd, NULL, TRUE) ;
                     sysMetrics.dwDiffFree = ABS_DIFF(sysMetrics.dwCurrFreeSpace, dwPrevSysFreeSpace);
                     if(sysMetrics.dwCurrFreeSpace > dwPrevSysFreeSpace){
                          sysMetrics.sign = 1;
@@ -156,14 +209,14 @@ long FAR PASCAL _export WndProc (HWND hwnd, UINT message, UINT wParam,
                          sysMetrics.sign = 0;
                     }
                }
-
+               InvalidateRect (hwnd, NULL, TRUE) ;
                dwPrevSysFreeSpace = sysMetrics.dwCurrFreeSpace;
                return 0 ;
 
           case WM_PAINT:
                hdc = BeginPaint (hwnd, &ps) ;
 
-               WndPaint (hwnd, hdc, sysMetrics, progMetrics, scratch);
+               WndPaint (hwnd, hdc, sysMetrics, progMetrics, scratch, &status);
 
                EndPaint (hwnd, &ps) ;
                return 0 ;
