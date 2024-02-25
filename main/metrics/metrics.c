@@ -102,21 +102,21 @@ void SizeTheWindow (short *pxStart,  short *pyStart, short *pxClient, short *pyC
      *pyStart  =     GetSystemMetrics (SM_CYSCREEN)   - *pyClient ;
 }
 
-int fib(int left, int right, int depth){
-     int result;
-     depth--;
-     if(depth <= 0){
-          // Record SP and return
-          __asm mov stackPointerCurrent, sp;
-          stackPointerMin = min(stackPointerMin, stackPointerCurrent);
-          result = ++left;
-     }else{
-          result = fib(++left, right, depth);
-     }
+// int fib(int left, int right, int depth){
+//      int result;
+//      depth--;
+//      if(depth <= 0){
+//           // Record SP and return
+//           __asm mov stackPointerCurrent, sp;
+//           stackPointerMin = min(stackPointerMin, stackPointerCurrent);
+//           result = ++left;
+//      }else{
+//           result = fib(++left, right, depth);
+//      }
 
-     return result;
+//      return result;
 
-}
+// }
 
 void WndPaint (HWND hwnd, HDC hdc, SystemMetrics_s sysMetrics, ProgramMetrics_s progMetrics, int* extra, char* status){
      char        cBuffer[80] ;
@@ -139,30 +139,28 @@ void WndPaint (HWND hwnd, HDC hdc, SystemMetrics_s sysMetrics, ProgramMetrics_s 
           *status = '-';
      }
      
-     // nLength = wsprintf (cBuffer, "Sys %ld (%c%ld)\r\nProg %d: %ld", 
-     //      sysMetrics.dwCurrFreeSpace, 
-     //      sign, sysMetrics.dwDiffFree,
-     //      progMetrics.handle, progMetrics.space);
+     nLength = wsprintf (cBuffer, "Sys %ld (%c%ld)\r\nProg %d: %ld", 
+          sysMetrics.dwCurrFreeSpace, 
+          sign, sysMetrics.dwDiffFree,
+          progMetrics.handle, progMetrics.space);
 
-     fibResult = fib(0, 1, callDepth);
+     // fibResult = fib(0, 1, callDepth);
 
-     nLength = wsprintf (cBuffer, "%c Fib #%d: %d\r\nSP 0x%X -> 0x%X (diff %d); limit 0x%X", *status,
-     callDepth, fibResult,
-     stackPointerStart, stackPointerMin, stackPointerStart - stackPointerMin, STKHQQ);
+     // nLength = wsprintf (cBuffer, "%c Fib #%d: %d\r\nSP 0x%X -> 0x%X (diff %d); limit 0x%X", *status,
+     // callDepth, fibResult,
+     // stackPointerStart, stackPointerMin, stackPointerStart - stackPointerMin, STKHQQ);
 
-     callDepth++;
-     if(callDepth > CALL_MAX){
-          callDepth = 1;
-     }
+     // callDepth++;
+     // if(callDepth > CALL_MAX){
+     //      callDepth = 1;
+     // }
 
-     for(i=0; i<SCRATCH_LENGTH; i++){
-          if(scratch[i] != 0x4242){
-               callDepth = 1;
-               return;
-               // MessageBox (hwnd, "Stack too far", "Oops", MB_ICONEXCLAMATION | MB_OK) ;
-
-          }
-     }
+     // for(i=0; i<SCRATCH_LENGTH; i++){
+     //      if(scratch[i] != 0x4242){
+     //           callDepth = 1;
+     //           return;
+     //      }
+     // }
 
      // DrawText (hdc, cBuffer, sprintf (cBuffer, "%.2f megs", dwFreeMem / 1024.0 / 1024.0), &rect, DT_WORDBREAK) ;
 
