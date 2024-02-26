@@ -20,15 +20,17 @@ typedef enum ToolbarWindowWords{
 #define TOOLBAR_EXTRA_WORDS 1 
 
 // Canvas tools are invoked with selecting a pixel
-typedef enum ToolboxTool{
-    ToolboxToolBrush = 0,
-    ToolboxToolLine,
-    ToolboxToolFlood,
-    ToolboxToolRect,
-    ToolboxToolEllipse, 
-    ToolboxToolErase,    
-    ToolboxToolSelect,       
-} ToolboxTool_e;
+typedef enum ToolbarTool{
+    ToolbarToolBrush = 0,
+    ToolbarToolLine,
+    ToolbarToolFlood,
+    ToolbarToolRect,
+    ToolbarToolEllipse, 
+    ToolbarToolErase,    
+    ToolbarToolSelect,       
+} ToolbarTool_e;
 
+const LPSTR toolbarToolNames[] = {"Brush", "Line", "Flood", "Rect", "Ellipse", "Erase", "Select", ""};
+// const char toolbarToolNames[] = {'B', 'L', 'F', 'R', 'E', 'X', 'S'};
 
 #endif

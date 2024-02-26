@@ -17,7 +17,11 @@ void move_cursor(short xAmount, short yAmount){
     SetCursorPos(lpCursorPoint.x, lpCursorPoint.y);
     return;
 }                            
-                                    
+
+BOOL map_toolbar_tool_to_canvas(CanvasTool_e* canvasTool, ToolbarTool_e toolbarTool){
+    *canvasTool = (CanvasTool_e)toolbarTool;
+    return TRUE;
+}                        
 
 BOOL pixel_color_code_to_rgb(WORD code, COLORREF* color){
     if(code >= 16){
@@ -27,10 +31,9 @@ BOOL pixel_color_code_to_rgb(WORD code, COLORREF* color){
     return TRUE;
 }
 
-BOOL canvas_draw_brush(HWND hwnd, HDC* hdc, BYTE* pixelFrame, int pixel, int x, int y, short width, short height){
+BOOL canvas_draw_brush(HWND hwnd, HDC* hdc, BYTE* pixelFrame, int pixel, POINT* ptClick, short width, short height){
     COLORREF newColor;
     HBRUSH hBrush;
-    POINT lpPoint;
     RECT rect;
     BYTE newColorCode;
 
@@ -40,11 +43,8 @@ BOOL canvas_draw_brush(HWND hwnd, HDC* hdc, BYTE* pixelFrame, int pixel, int x, 
     pixel_color_code_to_rgb(newColorCode, &newColor);
     hBrush = CreateSolidBrush(newColor);
 
-    lpPoint.x = ALIGN(x, width);
-    lpPoint.y = ALIGN(y, height);
-
-    rect.left = lpPoint.x+1;
-    rect.top = lpPoint.y+1;
+    rect.left = ptClick->x+1;
+    rect.top = ptClick->y+1;
     rect.right = rect.left + width - 2 ;
     rect.bottom = rect.top + height - 2;
 
@@ -54,6 +54,31 @@ BOOL canvas_draw_brush(HWND hwnd, HDC* hdc, BYTE* pixelFrame, int pixel, int x, 
     return TRUE;
 }
 
+
+BOOL canvas_draw_line(HWND hwnd, HDC* hdc, BYTE* pixelFrame, int pixel, POINT* ptClick1, POINT* ptClick2, short width, short height){
+    short pixelX, pixelY, pxLeftCol, pxRightCol, pxTopRow, pxBotRow;
+    POINT clickPoint, ptLeftTopClick, ptRightBotClick;
+
+
+    pxLeftCol = min(ptClick1->x, ptClick2->x);
+    pxRightCol = max(ptClick1->x, ptClick2->x);    
+    pxTopRow = min(ptClick1->y, ptClick2->y);
+    pxBotRow = max(ptClick1->y, ptClick2->y);    
+
+    for(pixelX = pxLeftCol; pixelX <= pxRightCol; pixelX++){
+        for(pixelY = pxTopRow; pixelY <= pxBotRow; pixelY++){
+            clickPoint.x = pixelX * width;
+            clickPoint.y = pixelY * height;
+
+            canvas_draw_brush(hwnd, hdc, pixelFrame, 
+                PIXEL_2D_2_1D(pixelX, pixelY), 
+                &clickPoint, 
+                width, height);
+        }
+    }
+
+    return TRUE;
+}
 
 
 int PASCAL WinMain(HANDLE hInstance, HANDLE hPrevInstance, LPSTR lpszCmdParam, int nCmdShow){
@@ -151,6 +176,8 @@ long FAR PASCAL _export WndProcMain(HWND hwnd, UINT message, UINT wParam, LONG l
     static BYTE CTRL_WASD = CTRL_GROUP_CURSOR;
     static BYTE CTRL_HJKL = CTRL_GROUP_CURSOR;
     static BYTE CTRL_ARROWS = CTRL_GROUP_CURSOR;
+    ToolbarTool_e toolbarTool;
+    CanvasTool_e canvasTool;
 
     switch(message){
         case WM_CREATE:{
@@ -322,10 +349,17 @@ long FAR PASCAL _export WndProcMain(HWND hwnd, UINT message, UINT wParam, LONG l
         }
         
         case WM_COMMAND:{
-            // MessageBox(hwnd, "WM_COMMAND", "IconEdit", MB_OK);
+            nLength = wsprintf (szBuffer, "wParam: %d, lParam %ld.", wParam, lParam);
+
+            // MessageBox(hwnd, szBuffer, "IconEdit", MB_OK);
             if(wParam == CHILD_ID_COLORBOX){
                 SetWindowWord(hwndCanvas, CanvasWordForeColor, LOWORD(lParam));
                 SetWindowWord(hwndCanvas, CanvasWordBackColor, HIWORD(lParam));
+            }else if(wParam == CHILD_ID_TOOLBAR){
+                toolbarTool = (ToolbarTool_e) LOWORD(lParam);
+                map_toolbar_tool_to_canvas(&canvasTool, toolbarTool);
+
+                SetWindowWord(hwndCanvas, CanvasWordTool, (WORD)canvasTool);
             }
             return 0;
         }
@@ -350,13 +384,19 @@ long FAR PASCAL _export WndProcMain(HWND hwnd, UINT message, UINT wParam, LONG l
 long FAR PASCAL _export WndProcToolbar(HWND hwnd, UINT message, UINT wParam, LONG lParam){
     HDC hdc;
     PAINTSTRUCT ps;
-    RECT rect;
+    RECT rect, rectText;
     static short cxBlock, cyBlock;
-    short x, y;
+    short x, y, col, row;
+    char cBuffer[16] ;
+    short nLength ;
+    static WORD selectedTool, activeTool;
+    HWND hwndParent;
 
     switch(message){
         case WM_CREATE:
-            SetWindowWord(hwnd, ToolbarWordTool, ToolboxToolBrush);       
+            SetWindowWord(hwnd, ToolbarWordTool, ToolbarToolBrush);
+            selectedTool = ToolbarToolBrush;  
+            activeTool = selectedTool;     
             return 0;
         
         case WM_SIZE:
@@ -364,16 +404,50 @@ long FAR PASCAL _export WndProcToolbar(HWND hwnd, UINT message, UINT wParam, LON
             cyBlock = HIWORD(lParam) / TOOLBAR_ROWS;
             return 0;
 
+        case WM_LBUTTONDOWN:{
+            x = LOWORD(lParam);
+            y = HIWORD(lParam);
+
+            col = x/cxBlock;
+            row = y/cyBlock;
+            selectedTool = col + row*TOOLBAR_COLS;
+
+            if( (col >= TOOLBAR_COLS) || (col < 0) || (row >= TOOLBAR_ROWS) || (row < 0)){
+                return 0;
+            }
+
+            hwndParent = GetParent(hwnd);
+
+            // nLength = wsprintf(szBuffer, "ID %d, code %d, to %d", CHILD_ID_COLORBOX, activeColorCode, hwndParent);
+            // MessageBox(hwnd, szBuffer, "ColorBox", MB_OK);
+
+            SendMessage(hwndParent, WM_COMMAND, CHILD_ID_TOOLBAR, selectedTool);
+            // MessageBeep(1);
+            InvalidateRect(hwnd, NULL, FALSE);
+
+            return 0;
+        }
+
         case WM_PAINT:{
             hdc = BeginPaint(hwnd, &ps);
             GetClientRect(hwnd, &rect);   
 
             Rectangle(hdc, rect.left, rect.top, rect.right, rect.bottom);
 
+
             for(x=0; x<TOOLBAR_COLS; x++){
                 for(y=0; y<TOOLBAR_ROWS; y++){
-                    Rectangle(hdc, rect.left + x*cxBlock, rect.top + y*cyBlock, 
-                                    rect.left + x*cxBlock +cxBlock, rect.top + y*cyBlock + cyBlock);
+                    nLength = wsprintf (cBuffer, "%s", toolbarToolNames[min(x + y*TOOLBAR_COLS, 7)]);
+
+                    rectText.left = rect.left + x*cxBlock;
+                    rectText.top = rect.top + y*cyBlock;
+                    rectText.right = rect.left + x*cxBlock +cxBlock;
+                    rectText.bottom = rect.top + y*cyBlock + cyBlock;
+
+
+                    Rectangle(hdc, rectText.left, rectText.top, 
+                                    rectText.right, rectText.bottom);
+                    DrawText (hdc, cBuffer, -1, &rectText, DT_CENTER | DT_NOCLIP) ;
                 }
             }
 
@@ -497,10 +571,13 @@ long FAR PASCAL _export WndProcCanvas(HWND hwnd, UINT message, UINT wParam, LONG
     //char szBuffer[40];
     //short nLength;
     static BYTE pixelFrame[PIXEL_COUNT];
+    static WORD drawState;
+    static POINT ptPixelDraw1, ptPixelDraw2;
 
 
     switch(message){
         case WM_CREATE:{
+            drawState = DRAW_STATE_START;
             SetWindowWord(hwnd, CanvasWordForeColor, PixelColorCodeBlack);
             SetWindowWord(hwnd, CanvasWordBackColor, PixelColorCodeWhite); 
             SetWindowWord(hwnd, CanvasWordTool, CanvasToolBrush); 
@@ -534,15 +611,25 @@ long FAR PASCAL _export WndProcCanvas(HWND hwnd, UINT message, UINT wParam, LONG
 
             switch ((BYTE)GetWindowWord(hwnd, CanvasWordTool)){
                 case CanvasToolBrush:
-                    canvas_draw_brush(hwnd, &hdc, pixelFrame, pixel, x, y, cxBlock, cyBlock);
+                    lpPoint.x = ALIGN(x, cxBlock);
+                    lpPoint.y = ALIGN(y, cyBlock);
+                    canvas_draw_brush(hwnd, &hdc, pixelFrame, pixel, &lpPoint, cxBlock, cyBlock);
                     break;
                 case CanvasToolLine:
-                    ;// switch(line_state, a static flag)
-                    //case FirstClick:
-                    //  set static POINT to click location
-                    //case SecondClick:
-                    //  do draw;
-                    //  reset flag to FirstClick
+                    switch (drawState){
+                        case DRAW_STATE_START:
+                            drawState = DRAW_LINE_FIRST;
+                            ptPixelDraw1.x = pixCol;
+                            ptPixelDraw1.y = pixRow;
+                            break;
+                        case DRAW_LINE_FIRST:
+                            ptPixelDraw2.x = pixCol;
+                            ptPixelDraw2.y = pixRow;
+                            canvas_draw_line(hwnd, &hdc, pixelFrame, pixel, &ptPixelDraw1, &ptPixelDraw2, cxBlock, cyBlock);
+                            drawState = DRAW_STATE_START;
+                            break;                            
+                    }
+
                     break;
                 default:
                     MessageBeep(0);

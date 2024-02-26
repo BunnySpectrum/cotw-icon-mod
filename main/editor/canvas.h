@@ -12,6 +12,7 @@ char szNameCanvas[] = "Canvas";
 
 #define CANVAS_DIM 32
 #define PIXEL_COUNT CANVAS_DIM * CANVAS_DIM
+#define PIXEL_2D_2_1D(col, row)  ((col) + (row)*(CANVAS_DIM))
 
 // Get/SetWindowWord offsets
 typedef enum CanvasWindowWords{
@@ -53,6 +54,8 @@ typedef enum CanvasModifier{
 // #define CANVAS_DATA_STATIC 1
 // #define CANVAS_DATA CANVAS_DATA_STATIC
 
-
+#define DRAW_STATE_START 0
+#define DRAW_LINE_FIRST 1
+#define DRAW_LINE_2ND 2
 
 #endif
