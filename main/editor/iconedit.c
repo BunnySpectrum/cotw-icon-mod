@@ -57,6 +57,50 @@ BOOL canvas_draw_brush(HWND hwnd, HDC* hdc, BYTE* pixelFrame, int pixel, POINT* 
 
 BOOL canvas_draw_line(HWND hwnd, HDC* hdc, BYTE* pixelFrame, int pixel, POINT* ptClick1, POINT* ptClick2, short width, short height){
     short pixelX, pixelY, pxLeftCol, pxRightCol, pxTopRow, pxBotRow;
+    short slope, inc;
+    POINT clickPoint;
+
+    //Quick fix for vertical lines
+    // Have to rework this function anyways for the line to be connected
+    if(ptClick1->x == ptClick2->x){
+        pixelX = ptClick1->x;
+        for(pixelY = min(ptClick1->y, ptClick2->y); pixelY <= max(ptClick1->y, ptClick2->y); pixelY++){
+            clickPoint.x = pixelX * width;
+            clickPoint.y = pixelY * height;
+
+            canvas_draw_brush(hwnd, hdc, pixelFrame, 
+                PIXEL_2D_2_1D(pixelX, pixelY), 
+                &clickPoint, 
+                width, height);
+        }
+        return TRUE;
+    }
+
+    if(ptClick1->x <=  ptClick2->x){
+        inc = 1;
+    }else{
+        inc = -1;
+    }
+       
+    slope = ((ptClick2->y - ptClick1->y)/(ptClick2->x - ptClick1->x));
+
+    for(pixelX = ptClick1->x; inc*(pixelX - ptClick2->x) <= 0; pixelX += inc){
+        pixelY = (pixelX - ptClick1->x)*slope + (ptClick1->y);
+            clickPoint.x = pixelX * width;
+            clickPoint.y = pixelY * height;
+
+            canvas_draw_brush(hwnd, hdc, pixelFrame, 
+                PIXEL_2D_2_1D(pixelX, pixelY), 
+                &clickPoint, 
+                width, height);
+    }
+
+    return TRUE;
+}
+
+
+BOOL canvas_draw_rect(HWND hwnd, HDC* hdc, BYTE* pixelFrame, int pixel, POINT* ptClick1, POINT* ptClick2, short width, short height){
+    short pixelX, pixelY, pxLeftCol, pxRightCol, pxTopRow, pxBotRow;
     POINT clickPoint, ptLeftTopClick, ptRightBotClick;
 
 
@@ -79,6 +123,40 @@ BOOL canvas_draw_line(HWND hwnd, HDC* hdc, BYTE* pixelFrame, int pixel, POINT* p
 
     return TRUE;
 }
+
+
+BOOL canvas_draw_flood(HWND hwnd, HDC* hdc, BYTE* pixelFrame, int pixel, POINT* ptClick1, POINT* ptClick2, short width, short height){
+    short pixelX, pixelY, pxLeftCol, pxRightCol, pxTopRow, pxBotRow;
+    short slope, inc;
+    POINT clickPoint;
+
+    pxLeftCol = min(ptClick1->x, ptClick2->x);
+    if(ptClick1->x <=  ptClick2->x){
+        inc = 1;
+    }else{
+        inc = -1;
+    }
+    
+    pxRightCol = max(ptClick1->x, ptClick2->x);    
+    // pxTopRow = min(ptClick1->y, ptClick2->y);
+    // pxBotRow = max(ptClick1->y, ptClick2->y);    
+
+    slope = ((ptClick2->y - ptClick1->y)/(ptClick2->x - ptClick1->x));
+
+    for(pixelX = ptClick1->x; inc*(pixelX - ptClick2->x) <= 0; pixelX += inc){
+        pixelY = (pixelX - ptClick1->x)*slope + (ptClick1->y);
+            clickPoint.x = pixelX * width;
+            clickPoint.y = pixelY * height;
+
+            canvas_draw_brush(hwnd, hdc, pixelFrame, 
+                PIXEL_2D_2_1D(pixelX, pixelY), 
+                &clickPoint, 
+                width, height);
+    }
+
+    return TRUE;
+}
+
 
 
 int PASCAL WinMain(HANDLE hInstance, HANDLE hPrevInstance, LPSTR lpszCmdParam, int nCmdShow){
@@ -437,7 +515,7 @@ long FAR PASCAL _export WndProcToolbar(HWND hwnd, UINT message, UINT wParam, LON
 
             for(x=0; x<TOOLBAR_COLS; x++){
                 for(y=0; y<TOOLBAR_ROWS; y++){
-                    nLength = wsprintf (cBuffer, "%s", toolbarToolNames[min(x + y*TOOLBAR_COLS, 7)]);
+                    nLength = wsprintf (cBuffer, "%s", toolbarToolNames[min(x + y*TOOLBAR_COLS, ToolbarToolMAX)]);
 
                     rectText.left = rect.left + x*cxBlock;
                     rectText.top = rect.top + y*cyBlock;
@@ -626,6 +704,22 @@ long FAR PASCAL _export WndProcCanvas(HWND hwnd, UINT message, UINT wParam, LONG
                             ptPixelDraw2.x = pixCol;
                             ptPixelDraw2.y = pixRow;
                             canvas_draw_line(hwnd, &hdc, pixelFrame, pixel, &ptPixelDraw1, &ptPixelDraw2, cxBlock, cyBlock);
+                            drawState = DRAW_STATE_START;
+                            break;                            
+                    }
+
+                    break;
+                case CanvasToolRect:
+                    switch (drawState){
+                        case DRAW_STATE_START:
+                            drawState = DRAW_LINE_FIRST;
+                            ptPixelDraw1.x = pixCol;
+                            ptPixelDraw1.y = pixRow;
+                            break;
+                        case DRAW_LINE_FIRST:
+                            ptPixelDraw2.x = pixCol;
+                            ptPixelDraw2.y = pixRow;
+                            canvas_draw_rect(hwnd, &hdc, pixelFrame, pixel, &ptPixelDraw1, &ptPixelDraw2, cxBlock, cyBlock);
                             drawState = DRAW_STATE_START;
                             break;                            
                     }

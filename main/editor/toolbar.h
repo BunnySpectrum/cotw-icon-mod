@@ -27,10 +27,10 @@ typedef enum ToolbarTool{
     ToolbarToolRect,
     ToolbarToolEllipse, 
     ToolbarToolErase,    
-    ToolbarToolSelect,       
+    ToolbarToolSelect,
+    ToolbarToolMAX,       
 } ToolbarTool_e;
 
 const LPSTR toolbarToolNames[] = {"Brush", "Line", "Flood", "Rect", "Ellipse", "Erase", "Select", ""};
-// const char toolbarToolNames[] = {'B', 'L', 'F', 'R', 'E', 'X', 'S'};
 
 #endif
