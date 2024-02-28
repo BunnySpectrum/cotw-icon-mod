@@ -36,6 +36,10 @@ BOOL canvas_draw_brush(HWND hwnd, HDC* hdc, BYTE* pixelFrame, int pixel, POINT* 
     HBRUSH hBrush;
     RECT rect;
     BYTE newColorCode;
+    short pixelCol, pixelRow;
+
+    pixelCol = PIXEL_1D_2_COL(pixel);
+    pixelRow = PIXEL_1D_2_ROW(pixel);
 
     newColorCode = (BYTE)GetWindowWord(hwnd, CanvasWordForeColor);
     pixelFrame[pixel] = newColorCode;  
@@ -43,8 +47,10 @@ BOOL canvas_draw_brush(HWND hwnd, HDC* hdc, BYTE* pixelFrame, int pixel, POINT* 
     pixel_color_code_to_rgb(newColorCode, &newColor);
     hBrush = CreateSolidBrush(newColor);
 
-    rect.left = ptClick->x+1;
-    rect.top = ptClick->y+1;
+    // rect.left = (pixelCol*width)+1;
+    // rect.top = (pixelRow*height)+1;
+    rect.left = (ptClick->x)+1;
+    rect.top = (ptClick->y)+1;
     rect.right = rect.left + width - 2 ;
     rect.bottom = rect.top + height - 2;
 
@@ -61,7 +67,6 @@ BOOL canvas_draw_line(HWND hwnd, HDC* hdc, BYTE* pixelFrame, int pixel, POINT* p
     POINT clickPoint;
 
     //Quick fix for vertical lines
-    // Have to rework this function anyways for the line to be connected
     if(ptClick1->x == ptClick2->x){
         pixelX = ptClick1->x;
         for(pixelY = min(ptClick1->y, ptClick2->y); pixelY <= max(ptClick1->y, ptClick2->y); pixelY++){
@@ -76,6 +81,7 @@ BOOL canvas_draw_line(HWND hwnd, HDC* hdc, BYTE* pixelFrame, int pixel, POINT* p
         return TRUE;
     }
 
+    // Have to rework this section anyways for the line to be connected and to work for slope < 1
     if(ptClick1->x <=  ptClick2->x){
         inc = 1;
     }else{
@@ -125,33 +131,38 @@ BOOL canvas_draw_rect(HWND hwnd, HDC* hdc, BYTE* pixelFrame, int pixel, POINT* p
 }
 
 
-BOOL canvas_draw_flood(HWND hwnd, HDC* hdc, BYTE* pixelFrame, int pixel, POINT* ptClick1, POINT* ptClick2, short width, short height){
-    short pixelX, pixelY, pxLeftCol, pxRightCol, pxTopRow, pxBotRow;
-    short slope, inc;
+BOOL canvas_draw_flood(HWND hwnd, HDC* hdc, BYTE* pixelFrame, int pixel, POINT* ptClick, short width, short height, PixelColorCode_e targetColorCode){
+    short pixelRow, pixelCol, nextRow, nextCol;
     POINT clickPoint;
+    PixelColorCode_e currentColorCode;
 
-    pxLeftCol = min(ptClick1->x, ptClick2->x);
-    if(ptClick1->x <=  ptClick2->x){
-        inc = 1;
+    pixelRow = PIXEL_1D_2_ROW(pixel);
+    pixelCol = PIXEL_1D_2_COL(pixel);    
+    clickPoint.x = pixelCol*width;
+    clickPoint.y = pixelRow*height;
+
+    currentColorCode = pixelFrame[pixel];
+    if (currentColorCode != targetColorCode){
+        return TRUE;
     }else{
-        inc = -1;
+        canvas_draw_brush(hwnd, hdc, pixelFrame, pixel, &clickPoint, width, height);
     }
+
     
-    pxRightCol = max(ptClick1->x, ptClick2->x);    
-    // pxTopRow = min(ptClick1->y, ptClick2->y);
-    // pxBotRow = max(ptClick1->y, ptClick2->y);    
 
-    slope = ((ptClick2->y - ptClick1->y)/(ptClick2->x - ptClick1->x));
+    if(pixelCol > 0){
+        canvas_draw_flood(hwnd, hdc, pixelFrame, PIXEL_2D_2_1D(pixelCol-1, pixelRow), &clickPoint, width, height, targetColorCode);
+    }
+    if(pixelCol < CANVAS_DIM-1){
+        canvas_draw_flood(hwnd, hdc, pixelFrame, PIXEL_2D_2_1D(pixelCol+1, pixelRow), &clickPoint, width, height, targetColorCode);
+    }
 
-    for(pixelX = ptClick1->x; inc*(pixelX - ptClick2->x) <= 0; pixelX += inc){
-        pixelY = (pixelX - ptClick1->x)*slope + (ptClick1->y);
-            clickPoint.x = pixelX * width;
-            clickPoint.y = pixelY * height;
+    if(pixelRow > 0){
+        canvas_draw_flood(hwnd, hdc, pixelFrame, PIXEL_2D_2_1D(pixelCol, pixelRow-1), &clickPoint, width, height, targetColorCode);    
+    }
 
-            canvas_draw_brush(hwnd, hdc, pixelFrame, 
-                PIXEL_2D_2_1D(pixelX, pixelY), 
-                &clickPoint, 
-                width, height);
+    if(pixelRow < CANVAS_DIM-1){
+        canvas_draw_flood(hwnd, hdc, pixelFrame, PIXEL_2D_2_1D(pixelCol, pixelRow+1), &clickPoint, width, height, targetColorCode);    
     }
 
     return TRUE;
@@ -725,6 +736,14 @@ long FAR PASCAL _export WndProcCanvas(HWND hwnd, UINT message, UINT wParam, LONG
                     }
 
                     break;
+
+                case CanvasToolFlood:
+                    lpPoint.x = pixCol;
+                    lpPoint.y = pixRow;
+                    canvas_draw_flood(hwnd, &hdc, pixelFrame, pixel, &lpPoint, cxBlock, cyBlock, pixelFrame[pixel]);
+                    break;                            
+                    
+
                 default:
                     MessageBeep(0);
                     break; //TODO signal error here
