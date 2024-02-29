@@ -7,14 +7,33 @@
 #include "colorbox.h"
 #include "log.h"
 
+static char szBuffer[80];
+static short nLength;
+static HWND debugWindow;
+#define CALL_DEPTH_LIMIT 1024
+static int callDepthCurrent, callDepthMax;
+extern int STKHQQ;
+static WORD stackPointerMin, stackPointerCurrent, stackPointerStart;
+static short pixW, pixH;
+static HWND floodHWND;
+static HDC floodHDC;
+
+#define FLOOD_VER 3
+
 // As-implemented, the cursor is not bounded here
 // This is intentional since eventually the canvas selector will be shown w/ a rectangle instead of the cursor
 void move_cursor(short xAmount, short yAmount){
     POINT lpCursorPoint;
+
     GetCursorPos(&lpCursorPoint);
-    lpCursorPoint.x += xAmount;
-    lpCursorPoint.y += yAmount;
+    // nLength = wsprintf(szBuffer, "x %d, y %d", lpCursorPoint.x, lpCursorPoint.y);
+    // MessageBox(debugWindow, szBuffer, "Before", MB_OK);
+    lpCursorPoint.x += (WORD)xAmount;
+    lpCursorPoint.y += (WORD)yAmount;
     SetCursorPos(lpCursorPoint.x, lpCursorPoint.y);
+
+    // nLength = wsprintf(szBuffer, "x %d, y %d", lpCursorPoint.x, lpCursorPoint.y);
+    // MessageBox(debugWindow, szBuffer, "After", MB_OK);
     return;
 }                            
 
@@ -31,7 +50,7 @@ BOOL pixel_color_code_to_rgb(WORD code, COLORREF* color){
     return TRUE;
 }
 
-BOOL canvas_draw_brush(HWND hwnd, HDC* hdc, BYTE* pixelFrame, int pixel, POINT* ptClick, short width, short height){
+BOOL canvas_draw_brush(HWND hwnd, HDC* hdc, BYTE* pixelFrame, int pixel, short width, short height){
     COLORREF newColor;
     HBRUSH hBrush;
     RECT rect;
@@ -47,10 +66,10 @@ BOOL canvas_draw_brush(HWND hwnd, HDC* hdc, BYTE* pixelFrame, int pixel, POINT* 
     pixel_color_code_to_rgb(newColorCode, &newColor);
     hBrush = CreateSolidBrush(newColor);
 
-    // rect.left = (pixelCol*width)+1;
-    // rect.top = (pixelRow*height)+1;
-    rect.left = (ptClick->x)+1;
-    rect.top = (ptClick->y)+1;
+    rect.left = (pixelCol*width)+1;
+    rect.top = (pixelRow*height)+1;
+    // rect.left = (ptClick->x)+1;
+    // rect.top = (ptClick->y)+1;
     rect.right = rect.left + width - 2 ;
     rect.bottom = rect.top + height - 2;
 
@@ -70,12 +89,9 @@ BOOL canvas_draw_line(HWND hwnd, HDC* hdc, BYTE* pixelFrame, int pixel, POINT* p
     if(ptClick1->x == ptClick2->x){
         pixelX = ptClick1->x;
         for(pixelY = min(ptClick1->y, ptClick2->y); pixelY <= max(ptClick1->y, ptClick2->y); pixelY++){
-            clickPoint.x = pixelX * width;
-            clickPoint.y = pixelY * height;
 
             canvas_draw_brush(hwnd, hdc, pixelFrame, 
                 PIXEL_2D_2_1D(pixelX, pixelY), 
-                &clickPoint, 
                 width, height);
         }
         return TRUE;
@@ -92,12 +108,9 @@ BOOL canvas_draw_line(HWND hwnd, HDC* hdc, BYTE* pixelFrame, int pixel, POINT* p
 
     for(pixelX = ptClick1->x; inc*(pixelX - ptClick2->x) <= 0; pixelX += inc){
         pixelY = (pixelX - ptClick1->x)*slope + (ptClick1->y);
-            clickPoint.x = pixelX * width;
-            clickPoint.y = pixelY * height;
 
             canvas_draw_brush(hwnd, hdc, pixelFrame, 
                 PIXEL_2D_2_1D(pixelX, pixelY), 
-                &clickPoint, 
                 width, height);
     }
 
@@ -117,12 +130,9 @@ BOOL canvas_draw_rect(HWND hwnd, HDC* hdc, BYTE* pixelFrame, int pixel, POINT* p
 
     for(pixelX = pxLeftCol; pixelX <= pxRightCol; pixelX++){
         for(pixelY = pxTopRow; pixelY <= pxBotRow; pixelY++){
-            clickPoint.x = pixelX * width;
-            clickPoint.y = pixelY * height;
 
             canvas_draw_brush(hwnd, hdc, pixelFrame, 
                 PIXEL_2D_2_1D(pixelX, pixelY), 
-                &clickPoint, 
                 width, height);
         }
     }
@@ -130,11 +140,13 @@ BOOL canvas_draw_rect(HWND hwnd, HDC* hdc, BYTE* pixelFrame, int pixel, POINT* p
     return TRUE;
 }
 
-
-BOOL canvas_draw_flood(HWND hwnd, HDC* hdc, BYTE* pixelFrame, int pixel, POINT* ptClick, short width, short height, PixelColorCode_e targetColorCode){
+#if FLOOD_VER == 0
+BOOL canvas_draw_flood_v0(HWND hwnd, HDC* hdc, BYTE* pixelFrame, int pixel, POINT* ptClick, short width, short height, PixelColorCode_e targetColorCode){
     short pixelRow, pixelCol, nextRow, nextCol;
     POINT clickPoint;
     PixelColorCode_e currentColorCode;
+
+    callDepthCurrent++;
 
     pixelRow = PIXEL_1D_2_ROW(pixel);
     pixelCol = PIXEL_1D_2_COL(pixel);    
@@ -143,31 +155,217 @@ BOOL canvas_draw_flood(HWND hwnd, HDC* hdc, BYTE* pixelFrame, int pixel, POINT* 
 
     currentColorCode = pixelFrame[pixel];
     if (currentColorCode != targetColorCode){
-        return TRUE;
+        goto FLOOD_EXIT;
     }else{
         canvas_draw_brush(hwnd, hdc, pixelFrame, pixel, &clickPoint, width, height);
+        // nLength = wsprintf(szBuffer, "Depth %d, Row %d, Col %d.", callDepthCurrent, pixelRow, pixelCol);
+        // MessageBox(hwnd, szBuffer, "Fill", MB_OK);
     }
 
+    if(callDepthCurrent >= CALL_DEPTH_LIMIT){
+        goto FLOOD_EXIT;
+    }
     
 
     if(pixelCol > 0){
-        canvas_draw_flood(hwnd, hdc, pixelFrame, PIXEL_2D_2_1D(pixelCol-1, pixelRow), &clickPoint, width, height, targetColorCode);
+        canvas_draw_flood_v0(hwnd, hdc, pixelFrame, PIXEL_2D_2_1D(pixelCol-1, pixelRow), &clickPoint, width, height, targetColorCode);
     }
     if(pixelCol < CANVAS_DIM-1){
-        canvas_draw_flood(hwnd, hdc, pixelFrame, PIXEL_2D_2_1D(pixelCol+1, pixelRow), &clickPoint, width, height, targetColorCode);
+        canvas_draw_flood_v0(hwnd, hdc, pixelFrame, PIXEL_2D_2_1D(pixelCol+1, pixelRow), &clickPoint, width, height, targetColorCode);
     }
 
     if(pixelRow > 0){
-        canvas_draw_flood(hwnd, hdc, pixelFrame, PIXEL_2D_2_1D(pixelCol, pixelRow-1), &clickPoint, width, height, targetColorCode);    
+        canvas_draw_flood_v0(hwnd, hdc, pixelFrame, PIXEL_2D_2_1D(pixelCol, pixelRow-1), &clickPoint, width, height, targetColorCode);    
     }
 
     if(pixelRow < CANVAS_DIM-1){
-        canvas_draw_flood(hwnd, hdc, pixelFrame, PIXEL_2D_2_1D(pixelCol, pixelRow+1), &clickPoint, width, height, targetColorCode);    
+        canvas_draw_flood_v0(hwnd, hdc, pixelFrame, PIXEL_2D_2_1D(pixelCol, pixelRow+1), &clickPoint, width, height, targetColorCode);    
     }
 
+    FLOOD_EXIT:
+    // Capture SP depth
+    __asm mov stackPointerCurrent, sp;
+    stackPointerMin = min(stackPointerCurrent, stackPointerMin);
+
+    // Capture call depth
+    callDepthMax = max(callDepthCurrent, callDepthMax);
+    callDepthCurrent--;
     return TRUE;
 }
+#endif
 
+#if FLOOD_VER == 1
+BOOL canvas_draw_flood_v1(HWND hwnd, HDC* hdc, BYTE* pixelFrame, int pixel, POINT* ptClick, short width, short height, PixelColorCode_e targetColorCode){
+    short pixelRow, pixelCol, nextRow, nextCol;
+    POINT clickPoint;
+    PixelColorCode_e currentColorCode;
+
+    callDepthCurrent++;
+
+    pixelRow = PIXEL_1D_2_ROW(pixel);
+    pixelCol = PIXEL_1D_2_COL(pixel);    
+    clickPoint.x = pixelCol*width;
+    clickPoint.y = pixelRow*height;
+
+    currentColorCode = pixelFrame[pixel];
+    if (currentColorCode != targetColorCode){
+        goto FLOOD_EXIT;
+    }else{
+        canvas_draw_brush(hwnd, hdc, pixelFrame, pixel, &clickPoint, width, height);
+        // nLength = wsprintf(szBuffer, "Depth %d, Row %d, Col %d.", callDepthCurrent, pixelRow, pixelCol);
+        // MessageBox(hwnd, szBuffer, "Fill", MB_OK);
+    }
+
+    if(callDepthCurrent >= CALL_DEPTH_LIMIT){
+        goto FLOOD_EXIT;
+    }
+    
+
+    if((pixelCol > 0) && (targetColorCode == pixelFrame[PIXEL_2D_2_1D(pixelCol-1, pixelRow)])){
+        canvas_draw_flood_v1(hwnd, hdc, pixelFrame, PIXEL_2D_2_1D(pixelCol-1, pixelRow), &clickPoint, width, height, targetColorCode);
+    }
+    if((pixelCol < CANVAS_DIM-1) && (targetColorCode == pixelFrame[PIXEL_2D_2_1D(pixelCol+1, pixelRow)])){
+        canvas_draw_flood_v1(hwnd, hdc, pixelFrame, PIXEL_2D_2_1D(pixelCol+1, pixelRow), &clickPoint, width, height, targetColorCode);
+    }
+
+    if((pixelRow > 0) && (targetColorCode == pixelFrame[PIXEL_2D_2_1D(pixelCol, pixelRow-1)])){
+        canvas_draw_flood_v1(hwnd, hdc, pixelFrame, PIXEL_2D_2_1D(pixelCol, pixelRow-1), &clickPoint, width, height, targetColorCode);    
+    }
+
+    if((pixelRow < CANVAS_DIM-1) && (targetColorCode == pixelFrame[PIXEL_2D_2_1D(pixelCol, pixelRow+1)])){
+        canvas_draw_flood_v1(hwnd, hdc, pixelFrame, PIXEL_2D_2_1D(pixelCol, pixelRow+1), &clickPoint, width, height, targetColorCode);    
+    }
+
+    FLOOD_EXIT:
+    // Capture SP depth
+    __asm mov stackPointerCurrent, sp;
+    stackPointerMin = min(stackPointerCurrent, stackPointerMin);
+
+    // Capture call depth
+    callDepthMax = max(callDepthCurrent, callDepthMax);
+    callDepthCurrent--;
+    return TRUE;
+}
+#endif
+
+
+#if FLOOD_VER == 2
+BOOL canvas_draw_flood_v2(HWND hwnd, HDC* hdc, BYTE* pixelFrame, int pixel, POINT* ptClick, short width, short height, PixelColorCode_e targetColorCode){
+    short pixelRow, pixelCol, nextRow, nextCol;
+    POINT clickPoint;
+    PixelColorCode_e currentColorCode;
+
+    callDepthCurrent++;
+
+    pixelRow = PIXEL_1D_2_ROW(pixel);
+    pixelCol = PIXEL_1D_2_COL(pixel);    
+    clickPoint.x = pixelCol*width;
+    clickPoint.y = pixelRow*height;
+
+    currentColorCode = pixelFrame[pixel];
+    if (currentColorCode != targetColorCode){
+        goto FLOOD_EXIT;
+    }else{
+        canvas_draw_brush(hwnd, hdc, pixelFrame, pixel, &clickPoint, width, height);
+        // nLength = wsprintf(szBuffer, "Depth %d, Row %d, Col %d.", callDepthCurrent, pixelRow, pixelCol);
+        // MessageBox(hwnd, szBuffer, "Fill", MB_OK);
+    }
+
+    if(callDepthCurrent >= CALL_DEPTH_LIMIT){
+        goto FLOOD_EXIT;
+    }
+    
+    // Left
+    if((pixelCol > 0) && (targetColorCode == pixelFrame[PIXEL_2D_2_1D(pixelCol-1, pixelRow)])){
+        canvas_draw_flood_v2(hwnd, hdc, pixelFrame, PIXEL_2D_2_1D(pixelCol-1, pixelRow), &clickPoint, width, height, targetColorCode);
+    }
+
+    // Up
+    if((pixelRow > 0) && (targetColorCode == pixelFrame[PIXEL_2D_2_1D(pixelCol, pixelRow-1)])){
+        canvas_draw_flood_v2(hwnd, hdc, pixelFrame, PIXEL_2D_2_1D(pixelCol, pixelRow-1), &clickPoint, width, height, targetColorCode);    
+    }
+
+    // Right
+    if((pixelCol < CANVAS_DIM-1) && (targetColorCode == pixelFrame[PIXEL_2D_2_1D(pixelCol+1, pixelRow)])){
+        canvas_draw_flood_v2(hwnd, hdc, pixelFrame, PIXEL_2D_2_1D(pixelCol+1, pixelRow), &clickPoint, width, height, targetColorCode);
+    }
+
+    // Down
+    if((pixelRow < CANVAS_DIM-1) && (targetColorCode == pixelFrame[PIXEL_2D_2_1D(pixelCol, pixelRow+1)])){
+        canvas_draw_flood_v2(hwnd, hdc, pixelFrame, PIXEL_2D_2_1D(pixelCol, pixelRow+1), &clickPoint, width, height, targetColorCode);    
+    }
+
+    FLOOD_EXIT:
+    // Capture SP depth
+    __asm mov stackPointerCurrent, sp;
+    stackPointerMin = min(stackPointerCurrent, stackPointerMin);
+
+    // Capture call depth
+    callDepthMax = max(callDepthCurrent, callDepthMax);
+    callDepthCurrent--;
+    return TRUE;
+}
+#endif
+
+#if FLOOD_VER == 3
+// SP start 0x86A6
+// #pragma check_stack(off)
+BOOL canvas_draw_flood_v3(BYTE* pixelFrame, int pixel, PixelColorCode_e targetColorCode){
+    // SP-2: push BP
+    // SP-6: chkstk moved by  to account for local variables
+    // SP-2: push SI
+    // SP-2: push DI
+    short pixelRow, pixelCol;
+
+    callDepthCurrent++;
+
+    pixelRow = PIXEL_1D_2_ROW(pixel);
+    pixelCol = PIXEL_1D_2_COL(pixel);    
+
+    if (pixelFrame[pixel] != targetColorCode){
+        goto FLOOD_EXIT;
+    }else{
+        canvas_draw_brush(floodHWND, &floodHDC, pixelFrame, pixel, pixW, pixH);
+        // nLength = wsprintf(szBuffer, "Depth %d, Row %d, Col %d.", callDepthCurrent, pixelRow, pixelCol);
+        // MessageBox(hwnd, szBuffer, "Fill", MB_OK);
+    }
+
+    if(callDepthCurrent >= CALL_DEPTH_LIMIT){
+        goto FLOOD_EXIT;
+    }
+    
+    // Left
+    if((pixelCol > 0) && (targetColorCode == pixelFrame[PIXEL_2D_2_1D(pixelCol-1, pixelRow)])){
+        canvas_draw_flood_v3(pixelFrame, PIXEL_2D_2_1D(pixelCol-1, pixelRow), targetColorCode);
+    }
+
+    // Up
+    if((pixelRow > 0) && (targetColorCode == pixelFrame[PIXEL_2D_2_1D(pixelCol, pixelRow-1)])){
+        canvas_draw_flood_v3(pixelFrame, PIXEL_2D_2_1D(pixelCol, pixelRow-1), targetColorCode);    
+    }
+
+    // Right
+    if((pixelCol < CANVAS_DIM-1) && (targetColorCode == pixelFrame[PIXEL_2D_2_1D(pixelCol+1, pixelRow)])){
+        canvas_draw_flood_v3(pixelFrame, PIXEL_2D_2_1D(pixelCol+1, pixelRow), targetColorCode);
+    }
+
+    // Down
+    if((pixelRow < CANVAS_DIM-1) && (targetColorCode == pixelFrame[PIXEL_2D_2_1D(pixelCol, pixelRow+1)])){
+        canvas_draw_flood_v3(pixelFrame, PIXEL_2D_2_1D(pixelCol, pixelRow+1), targetColorCode);    
+    }
+
+    FLOOD_EXIT:
+    // Capture SP depth
+    __asm mov stackPointerCurrent, sp;
+    stackPointerMin = min(stackPointerCurrent, stackPointerMin);
+
+    // Capture call depth
+    callDepthMax = max(callDepthCurrent, callDepthMax);
+    callDepthCurrent--;
+    return TRUE;
+}
+// #pragma check_stack(on)
+#endif
 
 
 int PASCAL WinMain(HANDLE hInstance, HANDLE hPrevInstance, LPSTR lpszCmdParam, int nCmdShow){
@@ -252,8 +450,6 @@ long FAR PASCAL _export WndProcMain(HWND hwnd, UINT message, UINT wParam, LONG l
     static short cxBlock, cyBlock;
     static short canvasSize;
     static short counter;
-    char szBuffer[80];
-    short nLength;
     short x, y;
     HDC hdc;
     PAINTSTRUCT ps;
@@ -320,98 +516,90 @@ long FAR PASCAL _export WndProcMain(HWND hwnd, UINT message, UINT wParam, LONG l
             // MessageBox(hwnd, szBuffer, "Main", MB_OK);
             return 0;
         }  
-        case WM_KEYDOWN:{
+        case WM_KEYDOWN:{    
+       		 debugWindow = hwnd;
             switch(wParam){
                 case VK_SPACE:
                     GetCursorPos(&lpMousePoint);
+                    // nLength = wsprintf(szBuffer, "x %d, y %d", lpMousePoint.x, lpMousePoint.y);
+                    // MessageBox(debugWindow, szBuffer, "Current", MB_OK);
                     ScreenToClient(hwndCanvas, &lpMousePoint);
                     SendMessage(hwndCanvas, WM_LBUTTONDOWN, 0, MAKELONG(lpMousePoint.x, lpMousePoint.y));
                     break;
 
                 case VK_LEFT:
-                    if(CTRL_ARROWS == CTRL_GROUP_CURSOR){
-                        move_cursor
-                    (-1 * canvasSize/CANVAS_DIM, 0);
+                    
+                    if((WORD)CTRL_ARROWS == (WORD)CTRL_GROUP_CURSOR){
+                        move_cursor(-1 * canvasSize/CANVAS_DIM, 0);
                     }
                     break;
 
                 case 'A':
                     if(CTRL_WASD == CTRL_GROUP_CURSOR){
-                        move_cursor
-                    (-1 * canvasSize/CANVAS_DIM, 0);
+                        move_cursor(-1 * canvasSize/CANVAS_DIM, 0);
                     }
                     break;
 
                 case 'H':
                     if(CTRL_HJKL == CTRL_GROUP_CURSOR){
-                        move_cursor
-                    (-1*canvasSize/CANVAS_DIM, 0);
+                        move_cursor(-1*canvasSize/CANVAS_DIM, 0);
                     }
                     break; 
 
 
                 case VK_RIGHT:
                     if(CTRL_ARROWS == CTRL_GROUP_CURSOR){
-                        move_cursor
-                    (canvasSize/CANVAS_DIM, 0);  
+                        move_cursor(canvasSize/CANVAS_DIM, 0);  
                     }
                     break;
                 
                 case 'D':
                     if(CTRL_WASD == CTRL_GROUP_CURSOR){
-                        move_cursor
-                    (canvasSize/CANVAS_DIM, 0); 
+                        move_cursor(canvasSize/CANVAS_DIM, 0); 
                     }
                     break; 
 
                 case 'L':
                     if(CTRL_HJKL == CTRL_GROUP_CURSOR){
-                        move_cursor
-                    (canvasSize/CANVAS_DIM, 0);
+                        move_cursor(canvasSize/CANVAS_DIM, 0);
                     }
                     break; 
 
 
                 case VK_UP:
                     if(CTRL_ARROWS == CTRL_GROUP_CURSOR){
-                        move_cursor
-                    (0, -1*canvasSize/CANVAS_DIM); 
+                        move_cursor(0, -1*canvasSize/CANVAS_DIM); 
                     }
                     break;
                 
                 case 'W':
                     if(CTRL_WASD == CTRL_GROUP_CURSOR){
-                        move_cursor
-                    (0, -1*canvasSize/CANVAS_DIM);
+                        move_cursor(0, -1*canvasSize/CANVAS_DIM);
                     }
                     break; 
 
                 case 'K':
                     if(CTRL_HJKL == CTRL_GROUP_CURSOR){
-                        move_cursor
-                    (0, -1*canvasSize/CANVAS_DIM);
+                        move_cursor(0, -1*canvasSize/CANVAS_DIM);
                     }
                     break; 
 
 
                 case VK_DOWN:
                     if(CTRL_ARROWS == CTRL_GROUP_CURSOR){
-                        move_cursor
-                    (0, canvasSize/CANVAS_DIM);
+                        move_cursor(0, canvasSize/CANVAS_DIM);
                     }
                     break;
 
                 case 'S':
                     if(CTRL_WASD == CTRL_GROUP_CURSOR){
-                        move_cursor
-                    (0, canvasSize/CANVAS_DIM);                    
+                        move_cursor(0, canvasSize/CANVAS_DIM);                    
                     }
                     break;
 
                 case 'J':
                     if(CTRL_HJKL == CTRL_GROUP_CURSOR){
-                        move_cursor
-                    (0, canvasSize/CANVAS_DIM);                    
+                        move_cursor(0, canvasSize/CANVAS_DIM);                    
                     }
                     break; 
             }
@@ -680,6 +868,8 @@ long FAR PASCAL _export WndProcCanvas(HWND hwnd, UINT message, UINT wParam, LONG
         case WM_SIZE:{
             cxBlock = LOWORD(lParam) / CANVAS_DIM;
             cyBlock = HIWORD(lParam) / CANVAS_DIM;
+            pixW = cxBlock;
+            pixH = cyBlock;
             return 0;
         }
         
@@ -700,9 +890,9 @@ long FAR PASCAL _export WndProcCanvas(HWND hwnd, UINT message, UINT wParam, LONG
 
             switch ((BYTE)GetWindowWord(hwnd, CanvasWordTool)){
                 case CanvasToolBrush:
-                    lpPoint.x = ALIGN(x, cxBlock);
-                    lpPoint.y = ALIGN(y, cyBlock);
-                    canvas_draw_brush(hwnd, &hdc, pixelFrame, pixel, &lpPoint, cxBlock, cyBlock);
+                    // lpPoint.x = ALIGN(x, cxBlock);
+                    // lpPoint.y = ALIGN(y, cyBlock);
+                    canvas_draw_brush(hwnd, &hdc, pixelFrame, pixel, cxBlock, cyBlock);
                     break;
                 case CanvasToolLine:
                     switch (drawState){
@@ -738,9 +928,47 @@ long FAR PASCAL _export WndProcCanvas(HWND hwnd, UINT message, UINT wParam, LONG
                     break;
 
                 case CanvasToolFlood:
+                    if(pixelFrame[pixel] == (BYTE)GetWindowWord(hwnd, CanvasWordForeColor)){
+                        
+                        // MessageBox(hwnd, "Skip", "Flood", MB_OK);
+                        break;
+                    }
+                    __asm mov stackPointerStart, sp;
+                    stackPointerMin = stackPointerStart;
+                    stackPointerCurrent = stackPointerStart;
+
+                    callDepthCurrent = 0;
+                    callDepthMax = 0;
                     lpPoint.x = pixCol;
                     lpPoint.y = pixRow;
-                    canvas_draw_flood(hwnd, &hdc, pixelFrame, pixel, &lpPoint, cxBlock, cyBlock, pixelFrame[pixel]);
+                    floodHWND = hwnd;
+                    floodHDC = hdc;
+
+                    #if FLOOD_VER == 0
+                        canvas_draw_flood_v0(hwnd, &hdc, pixelFrame, pixel, &lpPoint, cxBlock, cyBlock, pixelFrame[pixel]);
+                    #elif FLOOD_VER == 1
+                        canvas_draw_flood_v1(hwnd, &hdc, pixelFrame, pixel, &lpPoint, cxBlock, cyBlock, pixelFrame[pixel]);
+                    #elif FLOOD_VER == 2
+                        canvas_draw_flood_v2(hwnd, &hdc, pixelFrame, pixel, &lpPoint, cxBlock, cyBlock, pixelFrame[pixel]);
+                    #elif FLOOD_VER == 3
+                        // total usage 22 bytes
+                        // uses 10 bytes for args and to call function
+                        // uses 6 bytes for BP, SI, and DI on stack
+                        // uses 6 bytes for local variables
+                        
+
+                        // SP-2: push 3rd arg
+                        // SP-2: push 2nd arg
+                        // SP-2: push 1st arg
+                        // SP-4: CALL function
+                        // SP at -10
+                        canvas_draw_flood_v3(pixelFrame, pixel, pixelFrame[pixel]);
+                    #else
+                        callDepthMax = -1;
+                    #endif
+
+                    // nLength = wsprintf(szBuffer, "V%d: Call %d, SP %d.", FLOOD_VER, callDepthMax, stackPointerStart - stackPointerMin);
+                    // MessageBox(hwnd, szBuffer, "Flood", MB_OK);
                     break;                            
                     
 
