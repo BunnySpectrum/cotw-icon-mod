@@ -80,40 +80,73 @@ BOOL canvas_draw_brush(HWND hwnd, HDC* hdc, BYTE* pixelFrame, int pixel, short w
 }
 
 
+// Bresenham's line algo
+// https://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm
+// Specifically, the versions tracking error for X and Y
 BOOL canvas_draw_line(HWND hwnd, HDC* hdc, BYTE* pixelFrame, int pixel, POINT* ptClick1, POINT* ptClick2, short width, short height){
     short pixelX, pixelY, pxLeftCol, pxRightCol, pxTopRow, pxBotRow;
     short slope, inc;
     POINT clickPoint;
+    short deltaX, deltaY, errorD, signX, signY, error2;
+    short bailCounter = CANVAS_DIM*2;
 
-    //Quick fix for vertical lines
-    if(ptClick1->x == ptClick2->x){
-        pixelX = ptClick1->x;
-        for(pixelY = min(ptClick1->y, ptClick2->y); pixelY <= max(ptClick1->y, ptClick2->y); pixelY++){
+    //Quick vertical line 
+    // if(ptClick1->x == ptClick2->x){
+    //     pixelX = ptClick1->x;
+    //     for(pixelY = min(ptClick1->y, ptClick2->y); pixelY <= max(ptClick1->y, ptClick2->y); pixelY++){
 
-            canvas_draw_brush(hwnd, hdc, pixelFrame, 
-                PIXEL_2D_2_1D(pixelX, pixelY), 
-                width, height);
+    //         canvas_draw_brush(hwnd, hdc, pixelFrame, 
+    //             PIXEL_2D_2_1D(pixelX, pixelY), 
+    //             width, height);
+    //     }
+    //     return TRUE;
+    // }
+
+    // abs of difference
+    deltaX = ptClick2->x - ptClick1->x;
+    deltaX = deltaX < 0 ? -1*deltaX : deltaX;
+
+    // get sign
+    signX = ptClick1->x < ptClick2->x ? 1 : -1;
+
+    //-1*abs of difference
+    deltaY = ptClick2->y - ptClick1->y;
+    deltaY = deltaY < 0 ? deltaY : -1*deltaY;
+
+    // get sign
+    signY = ptClick1->y < ptClick2->y ? 1 : -1;    
+
+    errorD = deltaX + deltaY;
+    pixelX = ptClick1->x;
+    pixelY = ptClick1->y;    
+
+    while(bailCounter-- > 0){
+        canvas_draw_brush(hwnd, hdc, pixelFrame, PIXEL_2D_2_1D(pixelX, pixelY), width, height);
+        if((pixelX == ptClick2->x) && (pixelY == ptClick2->y)){
+            break; //handle double-click on same spot
+            // MessageBox(hwnd, "First break", "Line", MB_OK);
         }
-        return TRUE;
+        error2 = 2*errorD;
+        if(error2 >= deltaY){
+            if(pixelX == ptClick2->x){
+                break;
+                // MessageBox(hwnd, "2nd break", "Line", MB_OK);
+            }
+            errorD += deltaY;
+            pixelX += signX;
+        }
+        if(error2 <= deltaX){
+            if(pixelY == ptClick2->y){
+                break;
+                // MessageBox(hwnd, "3rd break", "Line", MB_OK);
+            }
+            errorD += deltaX;
+            pixelY += signY;
+        }
     }
-
-    // Have to rework this section anyways for the line to be connected and to work for slope < 1
-    if(ptClick1->x <=  ptClick2->x){
-        inc = 1;
-    }else{
-        inc = -1;
+    if(bailCounter <= 0){
+        MessageBox(hwnd, "Error", "Line", MB_OK);
     }
-       
-    slope = ((ptClick2->y - ptClick1->y)/(ptClick2->x - ptClick1->x));
-
-    for(pixelX = ptClick1->x; inc*(pixelX - ptClick2->x) <= 0; pixelX += inc){
-        pixelY = (pixelX - ptClick1->x)*slope + (ptClick1->y);
-
-            canvas_draw_brush(hwnd, hdc, pixelFrame, 
-                PIXEL_2D_2_1D(pixelX, pixelY), 
-                width, height);
-    }
-
     return TRUE;
 }
 
