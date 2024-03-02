@@ -943,7 +943,7 @@ long FAR PASCAL _export WndProcCanvas(HWND hwnd, UINT message, UINT wParam, LONG
                     }
 
                     break;
-                case CanvasToolRect:
+                case CanvasToolRect:{
                     switch (drawState){
                         case DRAW_STATE_START:
                             drawState = DRAW_LINE_FIRST;
@@ -959,8 +959,9 @@ long FAR PASCAL _export WndProcCanvas(HWND hwnd, UINT message, UINT wParam, LONG
                     }
 
                     break;
+            }
 
-                case CanvasToolFlood:
+                case CanvasToolFlood:{
                     if(pixelFrame[pixel] == (BYTE)GetWindowWord(hwnd, CanvasWordForeColor)){
                         
                         // MessageBox(hwnd, "Skip", "Flood", MB_OK);
@@ -1002,15 +1003,28 @@ long FAR PASCAL _export WndProcCanvas(HWND hwnd, UINT message, UINT wParam, LONG
 
                     // nLength = wsprintf(szBuffer, "V%d: Call %d, SP %d.", FLOOD_VER, callDepthMax, stackPointerStart - stackPointerMin);
                     // MessageBox(hwnd, szBuffer, "Flood", MB_OK);
-                    break;                            
+                    break;    
+                }                        
                     
+                case CanvasToolErase:{
+                    for(x=0; x<PIXEL_COUNT; x++){ 
+                       pixelFrame[x] = (BYTE)PixelColorCodeWhite;
+                    }
+                    
+                    //TODO find better way to handle validate/invalidate
+                    ReleaseDC(hwnd, hdc);    
+                    InvalidateRect(hwnd, NULL, FALSE);
+                    return 0;
+
+                    break;
+            }
 
                 default:
                     MessageBeep(0);
                     break; //TODO signal error here
             }
             
-            ReleaseDC(hwnd, hdc);            
+            ReleaseDC(hwnd, hdc);    
             ValidateRect(hwnd, NULL);
 
             // If I re-paint every time, the canvas blips.
