@@ -922,12 +922,15 @@ long FAR PASCAL _export WndProcCanvas(HWND hwnd, UINT message, UINT wParam, LONG
             hdc = GetDC(hwnd);
 
             switch ((BYTE)GetWindowWord(hwnd, CanvasWordTool)){
-                case CanvasToolBrush:
+                case CanvasToolBrush:{
                     // lpPoint.x = ALIGN(x, cxBlock);
                     // lpPoint.y = ALIGN(y, cyBlock);
                     canvas_draw_brush(hwnd, &hdc, pixelFrame, pixel, cxBlock, cyBlock);
+                    ValidateRect(hwnd, NULL);
                     break;
-                case CanvasToolLine:
+                }
+
+                case CanvasToolLine:{
                     switch (drawState){
                         case DRAW_STATE_START:
                             drawState = DRAW_LINE_FIRST;
@@ -939,10 +942,13 @@ long FAR PASCAL _export WndProcCanvas(HWND hwnd, UINT message, UINT wParam, LONG
                             ptPixelDraw2.y = pixRow;
                             canvas_draw_line(hwnd, &hdc, pixelFrame, pixel, &ptPixelDraw1, &ptPixelDraw2, cxBlock, cyBlock);
                             drawState = DRAW_STATE_START;
-                            break;                            
+                            break;   
+                    }                         
+                    
+                    ValidateRect(hwnd, NULL);
+                    break;
                     }
 
-                    break;
                 case CanvasToolRect:{
                     switch (drawState){
                         case DRAW_STATE_START:
@@ -957,7 +963,7 @@ long FAR PASCAL _export WndProcCanvas(HWND hwnd, UINT message, UINT wParam, LONG
                             drawState = DRAW_STATE_START;
                             break;                            
                     }
-
+                    ValidateRect(hwnd, NULL);
                     break;
             }
 
@@ -1003,6 +1009,7 @@ long FAR PASCAL _export WndProcCanvas(HWND hwnd, UINT message, UINT wParam, LONG
 
                     // nLength = wsprintf(szBuffer, "V%d: Call %d, SP %d.", FLOOD_VER, callDepthMax, stackPointerStart - stackPointerMin);
                     // MessageBox(hwnd, szBuffer, "Flood", MB_OK);
+                    ValidateRect(hwnd, NULL);
                     break;    
                 }                        
                     
@@ -1011,24 +1018,18 @@ long FAR PASCAL _export WndProcCanvas(HWND hwnd, UINT message, UINT wParam, LONG
                        pixelFrame[x] = (BYTE)PixelColorCodeWhite;
                     }
                     
-                    //TODO find better way to handle validate/invalidate
-                    ReleaseDC(hwnd, hdc);    
                     InvalidateRect(hwnd, NULL, FALSE);
-                    return 0;
-
                     break;
-            }
+                }
 
                 default:
                     MessageBeep(0);
+                    ValidateRect(hwnd, NULL);
                     break; //TODO signal error here
             }
             
+            // Cleanup
             ReleaseDC(hwnd, hdc);    
-            ValidateRect(hwnd, NULL);
-
-            // If I re-paint every time, the canvas blips.
-            // So only draw the pixels I modified
             return 0;
         }
 
