@@ -11,10 +11,11 @@ long FAR PASCAL _export WndProcCanvas(HWND, UINT, UINT, LONG);
 char szNameCanvas[] = "Canvas";
 
 #define CANVAS_DIM 32
-#define PIXEL_COUNT CANVAS_DIM * CANVAS_DIM
+#define PIXEL_COUNT (CANVAS_DIM) * (CANVAS_DIM)
 #define PIXEL_2D_2_1D(col, row)  ((col) + (row)*(CANVAS_DIM))
-#define PIXEL_1D_2_ROW(pixel) ((pixel) / CANVAS_DIM)
-#define PIXEL_1D_2_COL(pixel) ((pixel) % CANVAS_DIM)
+#define PIXEL_1D_2_ROW(pixel) ((pixel) / (CANVAS_DIM))
+#define PIXEL_1D_2_COL(pixel) ((pixel) % (CANVAS_DIM))
+#define PIXEL_BQUEUE_LEN ((PIXEL_COUNT)/8)
 
 // Get/SetWindowWord offsets
 typedef enum CanvasWindowWords{
