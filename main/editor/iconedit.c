@@ -19,7 +19,7 @@ static short pixW, pixH;
 static HWND floodHWND;
 static HDC floodHDC;
 
-#define FLOOD_VER 4
+#define FLOOD_VER 7
 
 // As-implemented, the cursor is not bounded here
 // This is intentional since eventually the canvas selector will be shown w/ a rectangle instead of the cursor
@@ -406,9 +406,9 @@ void pixel_num_to_bitfield(int pixel, short* byteNum, short* byteOffset){
 }
 
 #if FLOOD_VER == 4
-// #pragma check_stack(off)
+//Bitfield
 BOOL canvas_draw_flood_v4(BYTE* pixelFrame, int pixel, PixelColorCode_e targetColorCode){
-    BYTE pixelQueue[PIXEL_BQUEUE_LEN];
+    BYTE pixelFlags[PIXEL_BQUEUE_LEN];
     short pixelRow, pixelCol;
     short i, j;
     short pxQByte, pxQOffset, pxQSet;
@@ -421,7 +421,7 @@ BOOL canvas_draw_flood_v4(BYTE* pixelFrame, int pixel, PixelColorCode_e targetCo
 
     // memset(pixelQueue, 0, sizeof(pixelQueue));
     for(i=0; i<PIXEL_BQUEUE_LEN; i++){
-        pixelQueue[i] = 0;
+        pixelFlags[i] = 0;
     }
 
 
@@ -444,7 +444,7 @@ BOOL canvas_draw_flood_v4(BYTE* pixelFrame, int pixel, PixelColorCode_e targetCo
 
         // Clear bit in queue
         pixel_num_to_bitfield(pixel, &pxQByte, &pxQOffset);
-        pixelQueue[pxQByte] &= ~(1 << pxQOffset);
+        pixelFlags[pxQByte] &= ~(1 << pxQOffset);
 
         // Check 4-way adjacent pixels and set flag if need to flood them
         // Left
@@ -453,7 +453,7 @@ BOOL canvas_draw_flood_v4(BYTE* pixelFrame, int pixel, PixelColorCode_e targetCo
 
             // Set bit in queue
             pixel_num_to_bitfield(checkPixel, &pxQByte, &pxQOffset);
-            pixelQueue[pxQByte] |= (1 << pxQOffset);
+            pixelFlags[pxQByte] |= (1 << pxQOffset);
         }
 
         // Up
@@ -462,7 +462,7 @@ BOOL canvas_draw_flood_v4(BYTE* pixelFrame, int pixel, PixelColorCode_e targetCo
             
             // Set bit in queue
             pixel_num_to_bitfield(checkPixel, &pxQByte, &pxQOffset);
-            pixelQueue[pxQByte] |= (1 << pxQOffset);
+            pixelFlags[pxQByte] |= (1 << pxQOffset);
         }
 
         // Right
@@ -471,7 +471,7 @@ BOOL canvas_draw_flood_v4(BYTE* pixelFrame, int pixel, PixelColorCode_e targetCo
             
             // Set bit in queue
             pixel_num_to_bitfield(checkPixel, &pxQByte, &pxQOffset);
-            pixelQueue[pxQByte] |= (1 << pxQOffset);
+            pixelFlags[pxQByte] |= (1 << pxQOffset);
         }
 
         // Down
@@ -480,7 +480,7 @@ BOOL canvas_draw_flood_v4(BYTE* pixelFrame, int pixel, PixelColorCode_e targetCo
             
             // Set bit in queue
             pixel_num_to_bitfield(checkPixel, &pxQByte, &pxQOffset);
-            pixelQueue[pxQByte] |= (1 << pxQOffset);
+            pixelFlags[pxQByte] |= (1 << pxQOffset);
         }
 
 
@@ -488,7 +488,7 @@ BOOL canvas_draw_flood_v4(BYTE* pixelFrame, int pixel, PixelColorCode_e targetCo
         pixel = PIXEL_COUNT;
         for(i=0; i<PIXEL_COUNT; i++){
             pixel_num_to_bitfield(i, &pxQByte, &pxQOffset);
-            if((pixelQueue[pxQByte] & (1<<pxQOffset)) != 0){
+            if((pixelFlags[pxQByte] & (1<<pxQOffset)) != 0){
                 pixel = i;
                 break;
             }
@@ -511,6 +511,281 @@ BOOL canvas_draw_flood_v4(BYTE* pixelFrame, int pixel, PixelColorCode_e targetCo
 // #pragma check_stack(on)
 #endif
 
+#if FLOOD_VER == 5
+// Like v4 but fewer divisions
+// SP about 1k
+BOOL canvas_draw_flood_v5(BYTE* pixelFrame, int pixel, PixelColorCode_e targetColorCode){
+    BYTE pixelList[PIXEL_COUNT];
+    short pixelRow, pixelCol;
+    short i, j;
+    short pxQByte, pxQOffset, pxQSet;
+    int checkPixel;
+
+    if (pixelFrame[pixel] != targetColorCode){
+        //bail early for flooding shape with same color
+        goto FLOOD_EXIT; 
+    }
+
+    // memset(pixelQueue, 0, sizeof(pixelQueue));
+    for(i=0; i<PIXEL_COUNT; i++){
+        pixelList[i] = 0;
+    }
+
+    do{
+        // for breaking infinite loop error
+        callDepthCurrent++;
+        if(callDepthCurrent > CALL_DEPTH_LIMIT){
+            goto FLOOD_EXIT;
+        }
+
+        // Fill pixel
+        pixelRow = PIXEL_1D_2_ROW(pixel);
+        pixelCol = PIXEL_1D_2_COL(pixel);    
+        canvas_draw_brush(floodHWND, &floodHDC, pixelFrame, pixel, pixW, pixH);
+
+        // Clear bit in queue
+        pixelList[pixel] = 0;
+
+        // Check 4-way adjacent pixels and set flag if need to flood them
+        // Left
+        checkPixel = PIXEL_2D_2_1D(pixelCol-1, pixelRow);
+        if((pixelCol > 0) && (targetColorCode == pixelFrame[checkPixel])){            
+            // Set bit in queue
+            pixelList[checkPixel] = 1;
+        }
+
+        // Up
+        checkPixel = PIXEL_2D_2_1D(pixelCol, pixelRow-1);        
+        if((pixelRow > 0) && (targetColorCode == pixelFrame[checkPixel])){
+            // Set bit in queue
+            pixelList[checkPixel] = 1;
+        }
+
+        // Right
+        checkPixel = PIXEL_2D_2_1D(pixelCol+1, pixelRow);
+        if((pixelCol < CANVAS_DIM-1) && (targetColorCode == pixelFrame[checkPixel])){            
+            // Set bit in queue
+            pixelList[checkPixel] = 1;
+        }
+
+        // Down
+        checkPixel = PIXEL_2D_2_1D(pixelCol, pixelRow+1);        
+        if((pixelRow < CANVAS_DIM-1) && (targetColorCode == pixelFrame[PIXEL_2D_2_1D(pixelCol, pixelRow+1)])){
+            // Set bit in queue
+            pixelList[checkPixel] = 1;
+        }
+
+
+        // Check if pixels left to check
+        pixel = PIXEL_COUNT;
+        for(i=0; i<PIXEL_COUNT; i++){
+            if(pixelList[i] != 0){
+                pixel = i;
+                break;
+            }
+        }
+
+    }while(pixel < PIXEL_COUNT);
+    
+    
+
+    FLOOD_EXIT:
+    // Capture SP depth
+    __asm mov stackPointerCurrent, sp;
+    stackPointerMin = min(stackPointerCurrent, stackPointerMin);
+
+    // Capture call depth
+    callDepthMax = max(callDepthCurrent, callDepthMax);
+    callDepthCurrent--;
+    return TRUE;
+}
+#endif
+
+#if FLOOD_VER == 6
+// Fixed length queue of max length
+BOOL canvas_draw_flood_v6(BYTE* pixelFrame, int pixel, PixelColorCode_e targetColorCode){
+    int pixelQueue[PIXEL_COUNT*5];
+    short pixelRow, pixelCol;
+    short i, j;
+    short readIndex, writeIndex;
+    int checkPixel;
+
+    if (pixelFrame[pixel] != targetColorCode){
+        //bail early for flooding shape with same color
+        goto FLOOD_EXIT; 
+    }
+    
+    readIndex = writeIndex = 0;
+
+    // Set up first entry
+    pixelQueue[writeIndex++] = pixel;
+
+    
+    do{
+        // for breaking infinite loop error
+        callDepthCurrent++;
+        // if(callDepthCurrent > CALL_DEPTH_LIMIT){
+        //     MessageBox(NULL, "Depth", "Flood v6", MB_OK);
+        //     goto FLOOD_EXIT;
+        // }
+
+        if(writeIndex > 1024*5){
+            MessageBox(NULL, "Write max", "Flood v6", MB_OK);
+            goto FLOOD_EXIT;
+        }
+
+        // Get next pixel
+        pixel = pixelQueue[readIndex++];
+
+        // Fill pixel
+        pixelRow = PIXEL_1D_2_ROW(pixel);
+        pixelCol = PIXEL_1D_2_COL(pixel);    
+        canvas_draw_brush(floodHWND, &floodHDC, pixelFrame, pixel, pixW, pixH);
+
+        // Check 4-way adjacent pixels and set flag if need to flood them
+        // Left
+        checkPixel = PIXEL_2D_2_1D(pixelCol-1, pixelRow);
+        if((pixelCol > 0) && (targetColorCode == pixelFrame[checkPixel])){            
+            // Add
+            pixelQueue[writeIndex++] = checkPixel;
+        }
+
+        // Up
+        checkPixel = PIXEL_2D_2_1D(pixelCol, pixelRow-1);        
+        if((pixelRow > 0) && (targetColorCode == pixelFrame[checkPixel])){
+            // Add
+            pixelQueue[writeIndex++] = checkPixel;
+        }
+
+        // Right
+        checkPixel = PIXEL_2D_2_1D(pixelCol+1, pixelRow);
+        if((pixelCol < CANVAS_DIM-1) && (targetColorCode == pixelFrame[checkPixel])){            
+            // Add
+            pixelQueue[writeIndex++] = checkPixel;
+        }
+
+        // Down
+        checkPixel = PIXEL_2D_2_1D(pixelCol, pixelRow+1);        
+        if((pixelRow < CANVAS_DIM-1) && (targetColorCode == pixelFrame[checkPixel])){
+            // Add
+            pixelQueue[writeIndex++] = checkPixel;
+        }
+
+    // Check if pixels left to check
+    }while(readIndex < writeIndex);
+    
+    
+
+    FLOOD_EXIT:
+    // Capture SP depth
+    __asm mov stackPointerCurrent, sp;
+    stackPointerMin = min(stackPointerCurrent, stackPointerMin);
+
+    // Capture call depth
+    callDepthMax = max(callDepthCurrent, callDepthMax);
+    callDepthCurrent--;
+    return TRUE;
+}
+#endif
+
+
+#if FLOOD_VER == 7
+// Fixed length queue of max length without adding duplicates to queue
+// SP about 3k
+BOOL canvas_draw_flood_v7(BYTE* pixelFrame, int pixel, PixelColorCode_e targetColorCode){
+    int pixelQueue[PIXEL_COUNT];
+    BYTE pixelAdded[PIXEL_COUNT];
+    short pixelRow, pixelCol;
+    short i, j;
+    short readIndex, writeIndex;
+    int checkPixel;
+
+    if (pixelFrame[pixel] != targetColorCode){
+        //bail early for flooding shape with same color
+        goto FLOOD_EXIT; 
+    }
+
+    for(i=0; i<PIXEL_COUNT; i++){
+        pixelAdded[i] = 0;
+    }
+    
+    readIndex = writeIndex = 0;
+
+    // Set up first entry
+    pixelQueue[writeIndex++] = pixel;
+    pixelAdded[pixel] = 1;
+
+    
+    do{
+        // for breaking infinite loop error
+        callDepthCurrent++;
+        // if(callDepthCurrent > CALL_DEPTH_LIMIT){
+        //     MessageBox(NULL, "Depth", "Flood v6", MB_OK);
+        //     goto FLOOD_EXIT;
+        // }
+
+        if(writeIndex > 1024){
+            MessageBox(NULL, "Write max", "Flood v6", MB_OK);
+            goto FLOOD_EXIT;
+        }
+
+        // Get next pixel
+        pixel = pixelQueue[readIndex++];
+
+        // Fill pixel
+        pixelRow = PIXEL_1D_2_ROW(pixel);
+        pixelCol = PIXEL_1D_2_COL(pixel);    
+        canvas_draw_brush(floodHWND, &floodHDC, pixelFrame, pixel, pixW, pixH);
+
+        // Check 4-way adjacent pixels and set flag if need to flood them
+        // Left
+        checkPixel = PIXEL_2D_2_1D(pixelCol-1, pixelRow);
+        if((pixelCol > 0) && (targetColorCode == pixelFrame[checkPixel]) && (pixelAdded[checkPixel] == 0)){            
+            // Add
+            pixelQueue[writeIndex++] = checkPixel;
+            pixelAdded[checkPixel] = 1;
+        }
+
+        // Up
+        checkPixel = PIXEL_2D_2_1D(pixelCol, pixelRow-1);        
+        if((pixelRow > 0) && (targetColorCode == pixelFrame[checkPixel]) && (pixelAdded[checkPixel] == 0)){
+            // Add
+            pixelQueue[writeIndex++] = checkPixel;
+            pixelAdded[checkPixel] = 1;            
+        }
+
+        // Right
+        checkPixel = PIXEL_2D_2_1D(pixelCol+1, pixelRow);
+        if((pixelCol < CANVAS_DIM-1) && (targetColorCode == pixelFrame[checkPixel]) && (pixelAdded[checkPixel] == 0)){            
+            // Add
+            pixelQueue[writeIndex++] = checkPixel;
+            pixelAdded[checkPixel] = 1;  
+        }
+
+        // Down
+        checkPixel = PIXEL_2D_2_1D(pixelCol, pixelRow+1);        
+        if((pixelRow < CANVAS_DIM-1) && (targetColorCode == pixelFrame[checkPixel]) && (pixelAdded[checkPixel] == 0)){
+            // Add
+            pixelQueue[writeIndex++] = checkPixel;
+            pixelAdded[checkPixel] = 1;  
+        }
+
+    // Check if pixels left to check
+    }while(readIndex < writeIndex);
+    
+    
+
+    FLOOD_EXIT:
+    // Capture SP depth
+    __asm mov stackPointerCurrent, sp;
+    stackPointerMin = min(stackPointerCurrent, stackPointerMin);
+
+    // Capture call depth
+    callDepthMax = max(callDepthCurrent, callDepthMax);
+    callDepthCurrent--;
+    return TRUE;
+}
+#endif
 
 int PASCAL WinMain(HANDLE hInstance, HANDLE hPrevInstance, LPSTR lpszCmdParam, int nCmdShow){
     static char szNameApp[] = "CharacterCreator";
@@ -1116,12 +1391,18 @@ long FAR PASCAL _export WndProcCanvas(HWND hwnd, UINT message, UINT wParam, LONG
                         canvas_draw_flood_v3(pixelFrame, pixel, pixelFrame[pixel]);
                     #elif FLOOD_VER == 4
                         canvas_draw_flood_v4(pixelFrame, pixel, pixelFrame[pixel]);
+                    #elif FLOOD_VER == 5
+                        canvas_draw_flood_v5(pixelFrame, pixel, pixelFrame[pixel]);
+                    #elif FLOOD_VER == 6
+                        canvas_draw_flood_v6(pixelFrame, pixel, pixelFrame[pixel]);
+                    #elif FLOOD_VER == 7
+                        canvas_draw_flood_v7(pixelFrame, pixel, pixelFrame[pixel]);
                     #else
                         callDepthMax = -1;
                     #endif
 
-                    nLength = wsprintf(szBuffer, "V%d: Call %d, SP %d.", FLOOD_VER, callDepthMax, stackPointerStart - stackPointerMin);
-                    MessageBox(hwnd, szBuffer, "Flood", MB_OK);
+                    // nLength = wsprintf(szBuffer, "V%d: Call %d, SP %d.", FLOOD_VER, callDepthMax, stackPointerStart - stackPointerMin);
+                    // MessageBox(hwnd, szBuffer, "Flood", MB_OK);
                     ValidateRect(hwnd, NULL);
                     break;    
                 }                        
