@@ -19,6 +19,7 @@ static short pixW, pixH;
 static HWND floodHWND;
 static HDC floodHDC;
 
+
 #define FLOOD_VER 7
 
 // As-implemented, the cursor is not bounded here
@@ -51,28 +52,35 @@ BOOL pixel_color_code_to_rgb(WORD code, COLORREF* color){
     return TRUE;
 }
 
-BOOL canvas_draw_brush(HWND hwnd, HDC* hdc, BYTE* pixelFrame, int pixel, short width, short height){
+// BOOL canvas_act(HWND hwnd, HDC* hdc, BYTE* pixelFrame, CanvasTool_e tool, WORD x, WORD y, short size){
+//     switch (tool){
+//         case CanvasToolBrush:{
+//             canvas_draw_brush(hwnd, hdc, pixelFrame, )
+//             break;
+//         }
+//     }
+// }
+
+BOOL canvas_draw_brush(HWND hwnd, HDC* hdc, BYTE* pixelFrame, CanvasBrushArgs_s* args){
     COLORREF newColor;
     HBRUSH hBrush;
     RECT rect;
     BYTE newColorCode;
     short pixelCol, pixelRow;
 
-    pixelCol = PIXEL_1D_2_COL(pixel);
-    pixelRow = PIXEL_1D_2_ROW(pixel);
+    pixelCol = PIXEL_1D_2_COL(args->pixel);
+    pixelRow = PIXEL_1D_2_ROW(args->pixel);
 
     newColorCode = (BYTE)GetWindowWord(hwnd, CanvasWordForeColor);
-    pixelFrame[pixel] = newColorCode;  
+    pixelFrame[args->pixel] = newColorCode;  
 
     pixel_color_code_to_rgb(newColorCode, &newColor);
     hBrush = CreateSolidBrush(newColor);
 
-    rect.left = (pixelCol*width)+1;
-    rect.top = (pixelRow*height)+1;
-    // rect.left = (ptClick->x)+1;
-    // rect.top = (ptClick->y)+1;
-    rect.right = rect.left + width - 2 ;
-    rect.bottom = rect.top + height - 2;
+    rect.left = (pixelCol*args->size)+1;
+    rect.top = (pixelRow*args->size)+1;
+    rect.right = rect.left + args->size - 2 ;
+    rect.bottom = rect.top + args->size - 2;
 
     FillRect(*hdc, &rect, hBrush);
     DeleteObject(hBrush);
@@ -84,52 +92,43 @@ BOOL canvas_draw_brush(HWND hwnd, HDC* hdc, BYTE* pixelFrame, int pixel, short w
 // Bresenham's line algo
 // https://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm
 // Specifically, the versions tracking error for X and Y
-BOOL canvas_draw_line(HWND hwnd, HDC* hdc, BYTE* pixelFrame, int pixel, POINT* ptClick1, POINT* ptClick2, short width, short height){
+BOOL canvas_draw_line(HWND hwnd, HDC* hdc, BYTE* pixelFrame, CanvasLineArgs_s* args){
     short pixelX, pixelY, pxLeftCol, pxRightCol, pxTopRow, pxBotRow;
     short slope, inc;
     POINT clickPoint;
     short deltaX, deltaY, errorD, signX, signY, error2;
     short bailCounter = CANVAS_DIM*2;
-
-    //Quick vertical line 
-    // if(ptClick1->x == ptClick2->x){
-    //     pixelX = ptClick1->x;
-    //     for(pixelY = min(ptClick1->y, ptClick2->y); pixelY <= max(ptClick1->y, ptClick2->y); pixelY++){
-
-    //         canvas_draw_brush(hwnd, hdc, pixelFrame, 
-    //             PIXEL_2D_2_1D(pixelX, pixelY), 
-    //             width, height);
-    //     }
-    //     return TRUE;
-    // }
+    CanvasBrushArgs_s brushArgs;
 
     // abs of difference
-    deltaX = ptClick2->x - ptClick1->x;
+    deltaX = args->pt2->x - args->pt1->x;
     deltaX = deltaX < 0 ? -1*deltaX : deltaX;
 
     // get sign
-    signX = ptClick1->x < ptClick2->x ? 1 : -1;
+    signX = args->pt1->x < args->pt2->x ? 1 : -1;
 
     //-1*abs of difference
-    deltaY = ptClick2->y - ptClick1->y;
+    deltaY = args->pt2->y - args->pt1->y;
     deltaY = deltaY < 0 ? deltaY : -1*deltaY;
 
     // get sign
-    signY = ptClick1->y < ptClick2->y ? 1 : -1;    
+    signY = args->pt1->y < args->pt2->y ? 1 : -1;    
 
     errorD = deltaX + deltaY;
-    pixelX = ptClick1->x;
-    pixelY = ptClick1->y;    
+    pixelX = args->pt1->x;
+    pixelY = args->pt1->y;    
 
     while(bailCounter-- > 0){
-        canvas_draw_brush(hwnd, hdc, pixelFrame, PIXEL_2D_2_1D(pixelX, pixelY), width, height);
-        if((pixelX == ptClick2->x) && (pixelY == ptClick2->y)){
+        brushArgs.pixel = PIXEL_2D_2_1D(pixelX, pixelY);
+        brushArgs.size = args->size;
+        canvas_draw_brush(hwnd, hdc, pixelFrame, &brushArgs);
+        if((pixelX == args->pt2->x) && (pixelY == args->pt2->y)){
             break; //handle double-click on same spot
             // MessageBox(hwnd, "First break", "Line", MB_OK);
         }
         error2 = 2*errorD;
         if(error2 >= deltaY){
-            if(pixelX == ptClick2->x){
+            if(pixelX == args->pt2->x){
                 break;
                 // MessageBox(hwnd, "2nd break", "Line", MB_OK);
             }
@@ -137,7 +136,7 @@ BOOL canvas_draw_line(HWND hwnd, HDC* hdc, BYTE* pixelFrame, int pixel, POINT* p
             pixelX += signX;
         }
         if(error2 <= deltaX){
-            if(pixelY == ptClick2->y){
+            if(pixelY == args->pt2->y){
                 break;
                 // MessageBox(hwnd, "3rd break", "Line", MB_OK);
             }
@@ -152,22 +151,23 @@ BOOL canvas_draw_line(HWND hwnd, HDC* hdc, BYTE* pixelFrame, int pixel, POINT* p
 }
 
 
-BOOL canvas_draw_rect(HWND hwnd, HDC* hdc, BYTE* pixelFrame, int pixel, POINT* ptClick1, POINT* ptClick2, short width, short height){
+BOOL canvas_draw_rect(HWND hwnd, HDC* hdc, BYTE* pixelFrame, CanvasRectArgs_s* args){
     short pixelX, pixelY, pxLeftCol, pxRightCol, pxTopRow, pxBotRow;
     POINT clickPoint, ptLeftTopClick, ptRightBotClick;
+    CanvasBrushArgs_s brushArgs;
 
 
-    pxLeftCol = min(ptClick1->x, ptClick2->x);
-    pxRightCol = max(ptClick1->x, ptClick2->x);    
-    pxTopRow = min(ptClick1->y, ptClick2->y);
-    pxBotRow = max(ptClick1->y, ptClick2->y);    
+    pxLeftCol = min(args->pt1->x, args->pt2->x);
+    pxRightCol = max(args->pt1->x, args->pt2->x);    
+    pxTopRow = min(args->pt1->y, args->pt2->y);
+    pxBotRow = max(args->pt1->y, args->pt2->y);    
 
     for(pixelX = pxLeftCol; pixelX <= pxRightCol; pixelX++){
         for(pixelY = pxTopRow; pixelY <= pxBotRow; pixelY++){
+            brushArgs.pixel = PIXEL_2D_2_1D(pixelX, pixelY);
+            brushArgs.size = args->size;
 
-            canvas_draw_brush(hwnd, hdc, pixelFrame, 
-                PIXEL_2D_2_1D(pixelX, pixelY), 
-                width, height);
+            canvas_draw_brush(hwnd, hdc, pixelFrame, &brushArgs);
         }
     }
 
@@ -692,15 +692,16 @@ BOOL canvas_draw_flood_v6(BYTE* pixelFrame, int pixel, PixelColorCode_e targetCo
 #if FLOOD_VER == 7
 // Fixed length queue of max length without adding duplicates to queue
 // SP about 3k
-BOOL canvas_draw_flood_v7(BYTE* pixelFrame, int pixel, PixelColorCode_e targetColorCode){
+BOOL canvas_draw_flood_v7(BYTE* pixelFrame, CanvasFloodArgs_s* args){
     int pixelQueue[PIXEL_COUNT];
     BYTE pixelAdded[PIXEL_COUNT];
     short pixelRow, pixelCol;
     short i, j;
     short readIndex, writeIndex;
     int checkPixel;
+    CanvasBrushArgs_s brushArgs;
 
-    if (pixelFrame[pixel] != targetColorCode){
+    if (pixelFrame[args->pixel] != args->colorCode){
         //bail early for flooding shape with same color
         goto FLOOD_EXIT; 
     }
@@ -712,8 +713,8 @@ BOOL canvas_draw_flood_v7(BYTE* pixelFrame, int pixel, PixelColorCode_e targetCo
     readIndex = writeIndex = 0;
 
     // Set up first entry
-    pixelQueue[writeIndex++] = pixel;
-    pixelAdded[pixel] = 1;
+    pixelQueue[writeIndex++] = args->pixel;
+    pixelAdded[args->pixel] = 1;
 
     
     do{
@@ -730,17 +731,19 @@ BOOL canvas_draw_flood_v7(BYTE* pixelFrame, int pixel, PixelColorCode_e targetCo
         }
 
         // Get next pixel
-        pixel = pixelQueue[readIndex++];
+        args->pixel = pixelQueue[readIndex++];
 
         // Fill pixel
-        pixelRow = PIXEL_1D_2_ROW(pixel);
-        pixelCol = PIXEL_1D_2_COL(pixel);    
-        canvas_draw_brush(floodHWND, &floodHDC, pixelFrame, pixel, pixW, pixH);
+        pixelRow = PIXEL_1D_2_ROW(args->pixel);
+        pixelCol = PIXEL_1D_2_COL(args->pixel);    
+        brushArgs.pixel = args->pixel;
+        brushArgs.size = args->size;
+        canvas_draw_brush(floodHWND, &floodHDC, pixelFrame, &brushArgs);
 
         // Check 4-way adjacent pixels and set flag if need to flood them
         // Left
         checkPixel = PIXEL_2D_2_1D(pixelCol-1, pixelRow);
-        if((pixelCol > 0) && (targetColorCode == pixelFrame[checkPixel]) && (pixelAdded[checkPixel] == 0)){            
+        if((pixelCol > 0) && (args->colorCode == pixelFrame[checkPixel]) && (pixelAdded[checkPixel] == 0)){            
             // Add
             pixelQueue[writeIndex++] = checkPixel;
             pixelAdded[checkPixel] = 1;
@@ -748,7 +751,7 @@ BOOL canvas_draw_flood_v7(BYTE* pixelFrame, int pixel, PixelColorCode_e targetCo
 
         // Up
         checkPixel = PIXEL_2D_2_1D(pixelCol, pixelRow-1);        
-        if((pixelRow > 0) && (targetColorCode == pixelFrame[checkPixel]) && (pixelAdded[checkPixel] == 0)){
+        if((pixelRow > 0) && (args->colorCode == pixelFrame[checkPixel]) && (pixelAdded[checkPixel] == 0)){
             // Add
             pixelQueue[writeIndex++] = checkPixel;
             pixelAdded[checkPixel] = 1;            
@@ -756,7 +759,7 @@ BOOL canvas_draw_flood_v7(BYTE* pixelFrame, int pixel, PixelColorCode_e targetCo
 
         // Right
         checkPixel = PIXEL_2D_2_1D(pixelCol+1, pixelRow);
-        if((pixelCol < CANVAS_DIM-1) && (targetColorCode == pixelFrame[checkPixel]) && (pixelAdded[checkPixel] == 0)){            
+        if((pixelCol < CANVAS_DIM-1) && (args->colorCode == pixelFrame[checkPixel]) && (pixelAdded[checkPixel] == 0)){            
             // Add
             pixelQueue[writeIndex++] = checkPixel;
             pixelAdded[checkPixel] = 1;  
@@ -764,7 +767,7 @@ BOOL canvas_draw_flood_v7(BYTE* pixelFrame, int pixel, PixelColorCode_e targetCo
 
         // Down
         checkPixel = PIXEL_2D_2_1D(pixelCol, pixelRow+1);        
-        if((pixelRow < CANVAS_DIM-1) && (targetColorCode == pixelFrame[checkPixel]) && (pixelAdded[checkPixel] == 0)){
+        if((pixelRow < CANVAS_DIM-1) && (args->colorCode == pixelFrame[checkPixel]) && (pixelAdded[checkPixel] == 0)){
             // Add
             pixelQueue[writeIndex++] = checkPixel;
             pixelAdded[checkPixel] = 1;  
@@ -1309,14 +1312,17 @@ long FAR PASCAL _export WndProcCanvas(HWND hwnd, UINT message, UINT wParam, LONG
 
             switch ((BYTE)GetWindowWord(hwnd, CanvasWordTool)){
                 case CanvasToolBrush:{
-                    // lpPoint.x = ALIGN(x, cxBlock);
-                    // lpPoint.y = ALIGN(y, cyBlock);
-                    canvas_draw_brush(hwnd, &hdc, pixelFrame, pixel, cxBlock, cyBlock);
+                    CanvasBrushArgs_s brushArgs;
+                    brushArgs.pixel = pixel;
+                    brushArgs.size = cxBlock;
+
+                    canvas_draw_brush(hwnd, &hdc, pixelFrame, &brushArgs);
                     ValidateRect(hwnd, NULL);
                     break;
                 }
 
                 case CanvasToolLine:{
+                    CanvasLineArgs_s lineArgs;
                     switch (drawState){
                         case DRAW_STATE_START:
                             drawState = DRAW_LINE_FIRST;
@@ -1326,7 +1332,12 @@ long FAR PASCAL _export WndProcCanvas(HWND hwnd, UINT message, UINT wParam, LONG
                         case DRAW_LINE_FIRST:
                             ptPixelDraw2.x = pixCol;
                             ptPixelDraw2.y = pixRow;
-                            canvas_draw_line(hwnd, &hdc, pixelFrame, pixel, &ptPixelDraw1, &ptPixelDraw2, cxBlock, cyBlock);
+
+                            lineArgs.pixel = pixel;
+                            lineArgs.size = cxBlock;
+                            lineArgs.pt1 = &ptPixelDraw1;
+                            lineArgs.pt2 = &ptPixelDraw2;                            
+                            canvas_draw_line(hwnd, &hdc, pixelFrame, &lineArgs);
                             drawState = DRAW_STATE_START;
                             break;   
                     }                         
@@ -1336,6 +1347,8 @@ long FAR PASCAL _export WndProcCanvas(HWND hwnd, UINT message, UINT wParam, LONG
                     }
 
                 case CanvasToolRect:{
+                    CanvasRectArgs_s rectArgs;
+
                     switch (drawState){
                         case DRAW_STATE_START:
                             drawState = DRAW_LINE_FIRST;
@@ -1345,7 +1358,12 @@ long FAR PASCAL _export WndProcCanvas(HWND hwnd, UINT message, UINT wParam, LONG
                         case DRAW_LINE_FIRST:
                             ptPixelDraw2.x = pixCol;
                             ptPixelDraw2.y = pixRow;
-                            canvas_draw_rect(hwnd, &hdc, pixelFrame, pixel, &ptPixelDraw1, &ptPixelDraw2, cxBlock, cyBlock);
+
+                            rectArgs.pixel = pixel;
+                            rectArgs.size = cxBlock;
+                            rectArgs.pt1 = &ptPixelDraw1;
+                            rectArgs.pt2 = &ptPixelDraw2;
+                            canvas_draw_rect(hwnd, &hdc, pixelFrame, &rectArgs);
                             drawState = DRAW_STATE_START;
                             break;                            
                     }
@@ -1354,6 +1372,7 @@ long FAR PASCAL _export WndProcCanvas(HWND hwnd, UINT message, UINT wParam, LONG
             }
 
                 case CanvasToolFlood:{
+                    CanvasFloodArgs_s floodArgs;
                     if(pixelFrame[pixel] == (BYTE)GetWindowWord(hwnd, CanvasWordForeColor)){
                         
                         // MessageBox(hwnd, "Skip", "Flood", MB_OK);
@@ -1396,7 +1415,10 @@ long FAR PASCAL _export WndProcCanvas(HWND hwnd, UINT message, UINT wParam, LONG
                     #elif FLOOD_VER == 6
                         canvas_draw_flood_v6(pixelFrame, pixel, pixelFrame[pixel]);
                     #elif FLOOD_VER == 7
-                        canvas_draw_flood_v7(pixelFrame, pixel, pixelFrame[pixel]);
+                        floodArgs.pixel = pixel;
+                        floodArgs.size = cxBlock;
+                        floodArgs.colorCode = pixelFrame[pixel];
+                        canvas_draw_flood_v7(pixelFrame, &floodArgs);
                     #else
                         callDepthMax = -1;
                     #endif

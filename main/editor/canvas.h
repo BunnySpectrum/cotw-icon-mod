@@ -31,9 +31,7 @@ typedef enum CanvasTool{
     CanvasToolLine,
     CanvasToolFlood,
     CanvasToolRect,
-    CanvasToolEllipse, 
-    CanvasToolErase,    
-    CanvasToolSelect,       
+    CanvasToolErase,           
 } CanvasTool_e;
 
 // Canvas modifiers affect either the active tool or a section of the canvas
@@ -60,5 +58,31 @@ typedef enum CanvasModifier{
 #define DRAW_STATE_START 0
 #define DRAW_LINE_FIRST 1
 #define DRAW_LINE_2ND 2
+
+
+typedef struct CanvasBrushArgs{
+    int pixel;
+    short size;
+}CanvasBrushArgs_s;
+
+typedef struct CanvasLineArgs{
+    int pixel;
+    short size;
+    POINT* pt1;
+    POINT* pt2;
+}CanvasLineArgs_s;
+
+typedef struct CanvasRectArgs{
+    int pixel;
+    short size;
+    POINT* pt1;
+    POINT* pt2;
+}CanvasRectArgs_s;
+
+typedef struct CanvasFloodArgs{
+    int pixel;
+    short size;
+    PixelColorCode_e colorCode;
+}CanvasFloodArgs_s;
 
 #endif
