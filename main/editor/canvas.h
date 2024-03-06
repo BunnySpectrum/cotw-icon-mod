@@ -63,11 +63,13 @@ typedef enum CanvasModifier{
 typedef struct CanvasBrushArgs{
     int pixel;
     short size;
+    PixelColorCode_e newColorCode;
 }CanvasBrushArgs_s;
 
 typedef struct CanvasLineArgs{
     int pixel;
     short size;
+    PixelColorCode_e newColorCode;
     POINT* pt1;
     POINT* pt2;
 }CanvasLineArgs_s;
@@ -75,6 +77,7 @@ typedef struct CanvasLineArgs{
 typedef struct CanvasRectArgs{
     int pixel;
     short size;
+    PixelColorCode_e newColorCode;
     POINT* pt1;
     POINT* pt2;
 }CanvasRectArgs_s;
@@ -82,7 +85,22 @@ typedef struct CanvasRectArgs{
 typedef struct CanvasFloodArgs{
     int pixel;
     short size;
-    PixelColorCode_e colorCode;
+    PixelColorCode_e newColorCode;
+    PixelColorCode_e targetColorCode;
 }CanvasFloodArgs_s;
+
+typedef struct CanvasAction{
+    CanvasTool_e tool;
+    void* args;
+}CanvasAction_s;
+
+
+typedef struct CanvasHistoryEntry{
+    int number;
+    CanvasAction_s* nextAction;
+    CanvasAction_s* prevAction;
+}CanvasHistoryEntry_s;
+
+#define CANVAS_HISTORY_LEN 8
 
 #endif
