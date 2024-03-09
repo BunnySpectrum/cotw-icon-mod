@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <memory.h>
 #include <string.h>
+#include <stdlib.h>
 
 #include "iconedit.h"
 #include "canvas.h"
@@ -22,7 +23,9 @@ static WORD stackPointerMin, stackPointerCurrent, stackPointerStart;
 static short pixW, pixH;
 static HWND floodHWND;
 static HDC floodHDC;
-static CanvasHistoryEntry_s canvasHistory[CANVAS_HISTORY_LEN];
+static CanvasHistoryEntry_s* canvasHistory[CANVAS_HISTORY_LEN];
+static int canvasHistoryWriteIndex;
+static int canvasHistoryReadIndex;
 
 
 #define FLOOD_VER 7
@@ -104,22 +107,22 @@ BOOL canvas_draw_line(HDC* hdc, BYTE* pixelFrame, CanvasLineArgs_s* args){
     CanvasBrushArgs_s brushArgs;
 
     // abs of difference
-    deltaX = args->pt2->x - args->pt1->x;
+    deltaX = args->pt2.x - args->pt1.x;
     deltaX = deltaX < 0 ? -1*deltaX : deltaX;
 
     // get sign
-    signX = args->pt1->x < args->pt2->x ? 1 : -1;
+    signX = args->pt1.x < args->pt2.x ? 1 : -1;
 
     //-1*abs of difference
-    deltaY = args->pt2->y - args->pt1->y;
+    deltaY = args->pt2.y - args->pt1.y;
     deltaY = deltaY < 0 ? deltaY : -1*deltaY;
 
     // get sign
-    signY = args->pt1->y < args->pt2->y ? 1 : -1;    
+    signY = args->pt1.y < args->pt2.y ? 1 : -1;    
 
     errorD = deltaX + deltaY;
-    pixelX = args->pt1->x;
-    pixelY = args->pt1->y;    
+    pixelX = args->pt1.x;
+    pixelY = args->pt1.y;    
 
     while(bailCounter-- > 0){
         brushArgs.pixel = PIXEL_2D_2_1D(pixelX, pixelY);
@@ -127,13 +130,13 @@ BOOL canvas_draw_line(HDC* hdc, BYTE* pixelFrame, CanvasLineArgs_s* args){
         brushArgs.newColorCode = args->newColorCode;
         canvas_draw_brush(hdc, pixelFrame, &brushArgs);
 
-        if((pixelX == args->pt2->x) && (pixelY == args->pt2->y)){
+        if((pixelX == args->pt2.x) && (pixelY == args->pt2.y)){
             break; //handle double-click on same spot
             // MessageBox(hwnd, "First break", "Line", MB_OK);
         }
         error2 = 2*errorD;
         if(error2 >= deltaY){
-            if(pixelX == args->pt2->x){
+            if(pixelX == args->pt2.x){
                 break;
                 // MessageBox(hwnd, "2nd break", "Line", MB_OK);
             }
@@ -141,7 +144,7 @@ BOOL canvas_draw_line(HDC* hdc, BYTE* pixelFrame, CanvasLineArgs_s* args){
             pixelX += signX;
         }
         if(error2 <= deltaX){
-            if(pixelY == args->pt2->y){
+            if(pixelY == args->pt2.y){
                 break;
                 // MessageBox(hwnd, "3rd break", "Line", MB_OK);
             }
@@ -160,10 +163,10 @@ BOOL canvas_draw_rect(HDC* hdc, BYTE* pixelFrame, CanvasRectArgs_s* args){
     short pixelX, pixelY, pxLeftCol, pxRightCol, pxTopRow, pxBotRow;
     CanvasBrushArgs_s brushArgs;
 
-    pxLeftCol = min(args->pt1->x, args->pt2->x);
-    pxRightCol = max(args->pt1->x, args->pt2->x);    
-    pxTopRow = min(args->pt1->y, args->pt2->y);
-    pxBotRow = max(args->pt1->y, args->pt2->y);    
+    pxLeftCol = min(args->pt1.x, args->pt2.x);
+    pxRightCol = max(args->pt1.x, args->pt2.x);    
+    pxTopRow = min(args->pt1.y, args->pt2.y);
+    pxBotRow = max(args->pt1.y, args->pt2.y);    
 
     for(pixelX = pxLeftCol; pixelX <= pxRightCol; pixelX++){
         for(pixelY = pxTopRow; pixelY <= pxBotRow; pixelY++){
@@ -917,7 +920,8 @@ long FAR PASCAL _export WndProcMain(HWND hwnd, UINT message, UINT wParam, LONG l
 
             // wsprintf(szLogMessage, "Hello world");
             logWriteIndex = logReadIndex = 0;
-            log_message("Test message");
+            nLength = wsprintf (szBuffer, "Brush entry: %d.", sizeof(CanvasHistoryEntry_s) + 2*sizeof(CanvasAction_s) + sizeof(CanvasBrushArgs_s));
+            log_message(szBuffer);
 
             hwndToolbar = CreateWindow(szNameToolbar, NULL, WS_CHILDWINDOW | WS_VISIBLE,
                                         0, 0, 0, 0,
@@ -1073,7 +1077,7 @@ long FAR PASCAL _export WndProcMain(HWND hwnd, UINT message, UINT wParam, LONG l
         }
         
         case WM_COMMAND:{
-            nLength = wsprintf (szBuffer, "wParam: %d, lParam %ld.", wParam, lParam);
+            // nLength = wsprintf (szBuffer, "wParam: %d, lParam %ld.", wParam, lParam);
 
             // MessageBox(hwnd, szBuffer, "IconEdit", MB_OK);
             if(wParam == CHILD_ID_COLORBOX){
@@ -1081,8 +1085,30 @@ long FAR PASCAL _export WndProcMain(HWND hwnd, UINT message, UINT wParam, LONG l
                 SetWindowWord(hwndCanvas, CanvasWordBackColor, HIWORD(lParam));
             }else if(wParam == CHILD_ID_TOOLBAR){
                 toolbarTool = (ToolbarTool_e) LOWORD(lParam);
-                map_toolbar_tool_to_canvas(&canvasTool, toolbarTool);
-                SetWindowWord(hwndCanvas, CanvasWordTool, (WORD)canvasTool);
+                switch(toolbarTool){
+                    case ToolbarToolUndo:
+                        if(canvasHistoryReadIndex != canvasHistoryWriteIndex){
+                            canvasHistoryWriteIndex = (canvasHistoryWriteIndex - 1)%CANVAS_HISTORY_LEN;
+                            SendMessage(hwndCanvas, WM_COMMAND, 0, MAKELONG(canvasHistoryWriteIndex, 0));
+                            // if(canvasHistoryReadIndex == canvasHistoryWriteIndex){
+                            //     canvasHistoryReadIndex = (canvasHistoryReadIndex - 1)%CANVAS_HISTORY_LEN;
+                            // }
+
+                        }
+                        break;
+                    case ToolbarToolRedo:
+                        if(canvasHistory[canvasHistoryWriteIndex]->number == canvasHistoryWriteIndex){
+                            SendMessage(hwndCanvas, WM_COMMAND, 0, MAKELONG(canvasHistoryWriteIndex, 1));
+                            canvasHistoryWriteIndex = (canvasHistoryWriteIndex + 1)%CANVAS_HISTORY_LEN;                           
+                        }
+                        
+                        break;
+                    default:
+                        map_toolbar_tool_to_canvas(&canvasTool, toolbarTool);
+                        SetWindowWord(hwndCanvas, CanvasWordTool, (WORD)canvasTool);
+                        break;
+                }
+                
 
             }else if(wParam == CHILD_ID_CANVAS){
                 InvalidateRect(hwndLog, NULL, FALSE);
@@ -1296,6 +1322,7 @@ long FAR PASCAL _export WndProcCanvas(HWND hwnd, UINT message, UINT wParam, LONG
     static WORD drawState;
     static POINT ptPixelDraw1, ptPixelDraw2;
     HWND hwndParent;
+    CanvasHistoryEntry_s* newHistoryEntry;
 
 
     switch(message){
@@ -1309,6 +1336,8 @@ long FAR PASCAL _export WndProcCanvas(HWND hwnd, UINT message, UINT wParam, LONG
                 pixelFrame[x] = (BYTE)PixelColorCodeWhite;
             }
             hPen = CreatePen(PS_SOLID, 1, COLOR_SILVER);
+
+            canvasHistoryWriteIndex = canvasHistoryReadIndex = 0;
             return 0;
         }
         case WM_SIZE:{
@@ -1319,6 +1348,23 @@ long FAR PASCAL _export WndProcCanvas(HWND hwnd, UINT message, UINT wParam, LONG
             return 0;
         }
         
+        case WM_COMMAND:{
+            hdc = GetDC(hwnd);
+            switch(HIWORD(lParam)){
+                case 0: //undo
+                    // assume only brush tool for now
+                    canvas_draw_brush(&hdc, pixelFrame, canvasHistory[LOWORD(lParam)]->prevAction->args);
+                    ValidateRect(hwnd, NULL);
+                    break;
+                case 1: //redo
+                    canvas_draw_brush(&hdc, pixelFrame, canvasHistory[LOWORD(lParam)]->nextAction->args);
+                    break;
+                default:
+                    break;
+            }
+            ReleaseDC(hwnd, hdc); 
+            break;
+        }
 
         case WM_LBUTTONDOWN:{
             x = LOWORD(lParam);
@@ -1336,19 +1382,63 @@ long FAR PASCAL _export WndProcCanvas(HWND hwnd, UINT message, UINT wParam, LONG
 
             switch ((BYTE)GetWindowWord(hwnd, CanvasWordTool)){
                 case CanvasToolBrush:{
-                    CanvasBrushArgs_s brushArgs, undoArgs;
-                    brushArgs.pixel = pixel;
-                    brushArgs.size = cxBlock;
-                    brushArgs.newColorCode = GetWindowWord(hwnd, CanvasWordForeColor);
+                    CanvasBrushArgs_s* brushDoArgs = (CanvasBrushArgs_s*) malloc(sizeof(CanvasBrushArgs_s));
+                    CanvasBrushArgs_s* brushUndoArgs = (CanvasBrushArgs_s*) malloc(sizeof(CanvasBrushArgs_s)); 
+                    CanvasAction_s* brushDoAction = (CanvasAction_s*) malloc(sizeof(CanvasAction_s));
+                    CanvasAction_s* brushUndoAction = (CanvasAction_s*) malloc(sizeof(CanvasAction_s));                    
+                    newHistoryEntry = (CanvasHistoryEntry_s*) malloc(sizeof(CanvasHistoryEntry_s));
 
-                    undoArgs.newColorCode = canvas_draw_brush(&hdc, pixelFrame, &brushArgs);
+                    if(brushDoArgs == NULL){
+                        MessageBox(NULL, "Unable to alloc brushDoArgs", "Brush", MB_OK);
+                        break;
+                    }                
+                    if(brushUndoArgs == NULL){
+                        MessageBox(NULL, "Unable to alloc brushUndoArgs", "Brush", MB_OK);
+                        break;
+                    }    
+                    if(brushDoAction == NULL){
+                        MessageBox(NULL, "Unable to alloc brushDoAction", "Brush", MB_OK);
+                        break;
+                    }   
+                    if(brushUndoAction == NULL){
+                        MessageBox(NULL, "Unable to alloc brushUndoAction", "Brush", MB_OK);
+                        break;
+                    } 
+                    if(newHistoryEntry == NULL){
+                        MessageBox(NULL, "Unable to alloc newHistoryEntry", "Brush", MB_OK);
+                        break;
+                    }   
+
+
+                    brushDoArgs->pixel = pixel;
+                    brushDoArgs->size = cxBlock;
+                    brushDoArgs->newColorCode = GetWindowWord(hwnd, CanvasWordForeColor);
+
+                    brushUndoArgs->pixel = brushDoArgs->pixel;
+                    brushUndoArgs->size = brushDoArgs->size;                    
+                    brushUndoArgs->newColorCode = canvas_draw_brush(&hdc, pixelFrame, brushDoArgs);
                     ValidateRect(hwnd, NULL);
 
-                    wsprintf(szBuffer, "Brush %d %d %d", pixel, cxBlock, brushArgs.newColorCode);
-                    log_message(szBuffer);
-                    hwndParent = GetParent(hwnd);
-                    SendMessage(hwndParent, WM_COMMAND, CHILD_ID_CANVAS, 0);
-                    // InvalidateRect(debugWindow, NULL, FALSE);
+                    //Build history entry
+                    brushDoAction->tool = CanvasToolBrush;
+                    brushDoAction->args = brushDoArgs;
+
+                    brushUndoAction->tool = CanvasToolBrush;
+                    brushUndoAction->args = brushUndoArgs;
+ 
+                    newHistoryEntry->number = canvasHistoryWriteIndex;
+                    newHistoryEntry->nextAction = brushDoAction;
+                    newHistoryEntry->prevAction = brushUndoAction;
+
+                    canvasHistory[canvasHistoryWriteIndex] = newHistoryEntry;
+
+                    canvasHistoryWriteIndex = (canvasHistoryWriteIndex + 1)%CANVAS_HISTORY_LEN;
+                    canvasHistory[canvasHistoryWriteIndex]->number = -1;
+                    if(canvasHistoryWriteIndex == canvasHistoryReadIndex){
+                        canvasHistoryReadIndex = (canvasHistoryReadIndex + 1)%CANVAS_HISTORY_LEN;
+                    }
+
+
                     break;
                 }
 
@@ -1367,8 +1457,8 @@ long FAR PASCAL _export WndProcCanvas(HWND hwnd, UINT message, UINT wParam, LONG
                             lineArgs.pixel = pixel;
                             lineArgs.size = cxBlock;
                             lineArgs.newColorCode = GetWindowWord(hwnd, CanvasWordForeColor);
-                            lineArgs.pt1 = &ptPixelDraw1;
-                            lineArgs.pt2 = &ptPixelDraw2;                            
+                            lineArgs.pt1 = ptPixelDraw1;
+                            lineArgs.pt2 = ptPixelDraw2;                            
                             canvas_draw_line(&hdc, pixelFrame, &lineArgs);
                             drawState = DRAW_STATE_START;
                             break;   
@@ -1394,8 +1484,8 @@ long FAR PASCAL _export WndProcCanvas(HWND hwnd, UINT message, UINT wParam, LONG
                             rectArgs.pixel = pixel;
                             rectArgs.size = cxBlock;
                             rectArgs.newColorCode = GetWindowWord(hwnd, CanvasWordForeColor);
-                            rectArgs.pt1 = &ptPixelDraw1;
-                            rectArgs.pt2 = &ptPixelDraw2;
+                            rectArgs.pt1 = ptPixelDraw1;
+                            rectArgs.pt2 = ptPixelDraw2;
                             canvas_draw_rect(&hdc, pixelFrame, &rectArgs);
 
                             drawState = DRAW_STATE_START;
@@ -1477,6 +1567,11 @@ long FAR PASCAL _export WndProcCanvas(HWND hwnd, UINT message, UINT wParam, LONG
                     break; //TODO signal error here
             }
             
+            wsprintf(szBuffer, "Write %d, read %d", canvasHistoryWriteIndex, canvasHistoryReadIndex);
+            log_message(szBuffer);
+            hwndParent = GetParent(hwnd);
+            SendMessage(hwndParent, WM_COMMAND, CHILD_ID_CANVAS, 0);
+
             // Cleanup
             ReleaseDC(hwnd, hdc);    
             return 0;
@@ -1520,6 +1615,14 @@ long FAR PASCAL _export WndProcCanvas(HWND hwnd, UINT message, UINT wParam, LONG
             return 0;
 
         case WM_DESTROY:{
+            int x;
+            for(x=0; x<CANVAS_HISTORY_LEN; x++){
+                if(canvasHistory[x] != NULL){
+                    free(canvasHistory[x]->nextAction->args);
+                    free(canvasHistory[x]->prevAction->args);    
+                    free(canvasHistory[x]);                
+                }
+            }
             DeleteObject(hPen);
             PostQuitMessage(0);
             return 0;

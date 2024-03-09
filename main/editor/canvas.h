@@ -70,16 +70,16 @@ typedef struct CanvasLineArgs{
     int pixel;
     short size;
     PixelColorCode_e newColorCode;
-    POINT* pt1;
-    POINT* pt2;
+    POINT pt1;
+    POINT pt2;
 }CanvasLineArgs_s;
 
 typedef struct CanvasRectArgs{
     int pixel;
     short size;
     PixelColorCode_e newColorCode;
-    POINT* pt1;
-    POINT* pt2;
+    POINT pt1;
+    POINT pt2;
 }CanvasRectArgs_s;
 
 typedef struct CanvasFloodArgs{

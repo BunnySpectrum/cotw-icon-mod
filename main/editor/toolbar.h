@@ -25,10 +25,12 @@ typedef enum ToolbarTool{
     ToolbarToolLine,
     ToolbarToolFlood,
     ToolbarToolRect,
-    ToolbarToolErase,    
+    ToolbarToolErase,  
+    ToolbarToolUndo,
+    ToolbarToolRedo,      
     ToolbarToolMAX,       
 } ToolbarTool_e;
 
-const LPSTR toolbarToolNames[] = {"Brush", "Line", "Flood", "Rect", "Erase", ""};
+const LPSTR toolbarToolNames[] = {"Brush", "Line", "Flood", "Rect", "Erase", "Undo", "Redo", ""};
 
 #endif
