@@ -91,12 +91,12 @@ typedef struct CanvasFloodArgs{
 
 typedef struct CanvasAction{
     CanvasTool_e tool;
-    void* args;
+    void* args; //change this to a union of arg structs
 }CanvasAction_s;
 
 
 typedef struct CanvasHistoryEntry{
-    int number;
+    BOOL valid;
     CanvasAction_s* nextAction;
     CanvasAction_s* prevAction;
 }CanvasHistoryEntry_s;

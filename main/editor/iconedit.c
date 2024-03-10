@@ -30,6 +30,95 @@ static int canvasHistoryReadIndex;
 
 #define FLOOD_VER 7
 
+void free_history_entry(int index){
+    if(canvasHistory[index] != NULL){
+        free(canvasHistory[index]->nextAction->args);
+        free(canvasHistory[index]->prevAction->args);    
+        free(canvasHistory[index]);  
+        canvasHistory[index] = NULL;
+    }
+}
+
+BOOL create_history_entry(CanvasTool_e tool){
+    void* doArgs = NULL; 
+    void* undoArgs = NULL;
+    CanvasAction_s* doAction = NULL;
+    CanvasAction_s* undoAction = NULL;
+    CanvasHistoryEntry_s* newEntry = NULL;
+    
+
+    newEntry = (CanvasHistoryEntry_s*) malloc(sizeof(CanvasHistoryEntry_s));
+    if(newEntry == NULL){
+        goto FAIL;
+    }
+
+    doAction = (CanvasAction_s*) malloc(sizeof(CanvasAction_s));
+    if(doAction == NULL){
+        goto FAIL;
+    }
+    
+    undoAction = (CanvasAction_s*) malloc(sizeof(CanvasAction_s));                    
+    if(undoAction == NULL){
+        goto FAIL;
+    }
+
+    switch(tool){
+        case CanvasToolBrush:
+            doAction->tool = CanvasToolBrush;
+            doArgs = malloc(sizeof(CanvasBrushArgs_s));
+ 
+            undoAction->tool = CanvasToolBrush;
+            undoArgs = malloc(sizeof(CanvasBrushArgs_s)); 
+            break;
+
+        case CanvasToolLine:
+            doAction->tool = CanvasToolLine;
+            doArgs = malloc(sizeof(CanvasLineArgs_s));
+
+            undoAction->tool = CanvasToolLine; //change to rect bit replace
+            undoArgs = malloc(sizeof(CanvasLineArgs_s)); 
+            break;        
+
+        default:
+            goto FAIL;
+    }
+
+    // check here instead of after each malloc for readibility
+    if((doArgs == NULL) || (undoArgs == NULL)){
+        goto FAIL;
+    }
+
+
+    free_history_entry(canvasHistoryWriteIndex);
+    
+    // make actions
+    doAction->args = doArgs;
+    undoAction->args = undoArgs;
+
+    // make entry
+    newEntry->valid = TRUE;
+    newEntry->nextAction = doAction;
+    newEntry->prevAction = undoAction;
+
+    canvasHistory[canvasHistoryWriteIndex] = newEntry;
+    canvasHistoryReadIndex = canvasHistoryWriteIndex;
+    canvasHistoryWriteIndex = (canvasHistoryWriteIndex + 1) % CANVAS_HISTORY_LEN;
+    if(canvasHistory[canvasHistoryWriteIndex] != NULL){
+        canvasHistory[canvasHistoryWriteIndex]->valid = FALSE;
+    }
+    return TRUE;
+
+
+    FAIL:
+    free(newEntry);
+    free(doAction);
+    free(undoAction);
+    free(doArgs);
+    free(undoArgs);
+    return FALSE;
+
+}
+
 // As-implemented, the cursor is not bounded here
 // This is intentional since eventually the canvas selector will be shown w/ a rectangle instead of the cursor
 void move_cursor(short xAmount, short yAmount){
@@ -1087,18 +1176,17 @@ long FAR PASCAL _export WndProcMain(HWND hwnd, UINT message, UINT wParam, LONG l
                 toolbarTool = (ToolbarTool_e) LOWORD(lParam);
                 switch(toolbarTool){
                     case ToolbarToolUndo:
-                        if(canvasHistoryReadIndex != canvasHistoryWriteIndex){
-                            canvasHistoryWriteIndex = (canvasHistoryWriteIndex - 1)%CANVAS_HISTORY_LEN;
-                            SendMessage(hwndCanvas, WM_COMMAND, 0, MAKELONG(canvasHistoryWriteIndex, 0));
-                            // if(canvasHistoryReadIndex == canvasHistoryWriteIndex){
-                            //     canvasHistoryReadIndex = (canvasHistoryReadIndex - 1)%CANVAS_HISTORY_LEN;
-                            // }
+                        if((canvasHistory[canvasHistoryReadIndex] != NULL) && (canvasHistory[canvasHistoryReadIndex]->valid == TRUE)){                            
+                            SendMessage(hwndCanvas, WM_COMMAND, 0, MAKELONG(canvasHistoryReadIndex, 0));
+                            canvasHistoryWriteIndex = canvasHistoryReadIndex;
+                            canvasHistoryReadIndex = (canvasHistoryReadIndex - 1)%CANVAS_HISTORY_LEN;
 
                         }
                         break;
                     case ToolbarToolRedo:
-                        if(canvasHistory[canvasHistoryWriteIndex]->number == canvasHistoryWriteIndex){
+                        if((canvasHistory[canvasHistoryWriteIndex] != NULL) && (canvasHistory[canvasHistoryWriteIndex]->valid == TRUE)){
                             SendMessage(hwndCanvas, WM_COMMAND, 0, MAKELONG(canvasHistoryWriteIndex, 1));
+                            canvasHistoryReadIndex = canvasHistoryWriteIndex;
                             canvasHistoryWriteIndex = (canvasHistoryWriteIndex + 1)%CANVAS_HISTORY_LEN;                           
                         }
                         
@@ -1382,33 +1470,16 @@ long FAR PASCAL _export WndProcCanvas(HWND hwnd, UINT message, UINT wParam, LONG
 
             switch ((BYTE)GetWindowWord(hwnd, CanvasWordTool)){
                 case CanvasToolBrush:{
-                    CanvasBrushArgs_s* brushDoArgs = (CanvasBrushArgs_s*) malloc(sizeof(CanvasBrushArgs_s));
-                    CanvasBrushArgs_s* brushUndoArgs = (CanvasBrushArgs_s*) malloc(sizeof(CanvasBrushArgs_s)); 
-                    CanvasAction_s* brushDoAction = (CanvasAction_s*) malloc(sizeof(CanvasAction_s));
-                    CanvasAction_s* brushUndoAction = (CanvasAction_s*) malloc(sizeof(CanvasAction_s));                    
-                    newHistoryEntry = (CanvasHistoryEntry_s*) malloc(sizeof(CanvasHistoryEntry_s));
+                    CanvasBrushArgs_s* brushDoArgs = NULL;
+                    CanvasBrushArgs_s* brushUndoArgs = NULL;
 
-                    if(brushDoArgs == NULL){
-                        MessageBox(NULL, "Unable to alloc brushDoArgs", "Brush", MB_OK);
-                        break;
-                    }                
-                    if(brushUndoArgs == NULL){
-                        MessageBox(NULL, "Unable to alloc brushUndoArgs", "Brush", MB_OK);
-                        break;
-                    }    
-                    if(brushDoAction == NULL){
-                        MessageBox(NULL, "Unable to alloc brushDoAction", "Brush", MB_OK);
-                        break;
-                    }   
-                    if(brushUndoAction == NULL){
-                        MessageBox(NULL, "Unable to alloc brushUndoAction", "Brush", MB_OK);
-                        break;
-                    } 
-                    if(newHistoryEntry == NULL){
-                        MessageBox(NULL, "Unable to alloc newHistoryEntry", "Brush", MB_OK);
+                    if(FALSE == create_history_entry(CanvasToolBrush)){
+                        MessageBox(NULL, "Unable to create history entry", "Brush", MB_OK);
                         break;
                     }   
 
+                    brushDoArgs = (CanvasBrushArgs_s*)canvasHistory[canvasHistoryReadIndex]->nextAction->args;
+                    brushUndoArgs = (CanvasBrushArgs_s*)canvasHistory[canvasHistoryReadIndex]->prevAction->args;                    
 
                     brushDoArgs->pixel = pixel;
                     brushDoArgs->size = cxBlock;
@@ -1418,26 +1489,6 @@ long FAR PASCAL _export WndProcCanvas(HWND hwnd, UINT message, UINT wParam, LONG
                     brushUndoArgs->size = brushDoArgs->size;                    
                     brushUndoArgs->newColorCode = canvas_draw_brush(&hdc, pixelFrame, brushDoArgs);
                     ValidateRect(hwnd, NULL);
-
-                    //Build history entry
-                    brushDoAction->tool = CanvasToolBrush;
-                    brushDoAction->args = brushDoArgs;
-
-                    brushUndoAction->tool = CanvasToolBrush;
-                    brushUndoAction->args = brushUndoArgs;
- 
-                    newHistoryEntry->number = canvasHistoryWriteIndex;
-                    newHistoryEntry->nextAction = brushDoAction;
-                    newHistoryEntry->prevAction = brushUndoAction;
-
-                    canvasHistory[canvasHistoryWriteIndex] = newHistoryEntry;
-
-                    canvasHistoryWriteIndex = (canvasHistoryWriteIndex + 1)%CANVAS_HISTORY_LEN;
-                    canvasHistory[canvasHistoryWriteIndex]->number = -1;
-                    if(canvasHistoryWriteIndex == canvasHistoryReadIndex){
-                        canvasHistoryReadIndex = (canvasHistoryReadIndex + 1)%CANVAS_HISTORY_LEN;
-                    }
-
 
                     break;
                 }
@@ -1617,11 +1668,7 @@ long FAR PASCAL _export WndProcCanvas(HWND hwnd, UINT message, UINT wParam, LONG
         case WM_DESTROY:{
             int x;
             for(x=0; x<CANVAS_HISTORY_LEN; x++){
-                if(canvasHistory[x] != NULL){
-                    free(canvasHistory[x]->nextAction->args);
-                    free(canvasHistory[x]->prevAction->args);    
-                    free(canvasHistory[x]);                
-                }
+                free_history_entry(x);
             }
             DeleteObject(hPen);
             PostQuitMessage(0);
