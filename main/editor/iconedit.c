@@ -1179,7 +1179,7 @@ long FAR PASCAL _export WndProcMain(HWND hwnd, UINT message, UINT wParam, LONG l
                         if((canvasHistory[canvasHistoryReadIndex] != NULL) && (canvasHistory[canvasHistoryReadIndex]->valid == TRUE)){                            
                             SendMessage(hwndCanvas, WM_COMMAND, 0, MAKELONG(canvasHistoryReadIndex, 0));
                             canvasHistoryWriteIndex = canvasHistoryReadIndex;
-                            canvasHistoryReadIndex = (canvasHistoryReadIndex - 1)%CANVAS_HISTORY_LEN;
+                            canvasHistoryReadIndex = canvasHistoryReadIndex > 0 ? (canvasHistoryReadIndex - 1) : (CANVAS_HISTORY_LEN-1);
 
                         }
                         break;
