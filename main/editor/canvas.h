@@ -31,7 +31,8 @@ typedef enum CanvasTool{
     CanvasToolLine,
     CanvasToolFlood,
     CanvasToolRect,
-    CanvasToolErase,           
+    CanvasToolErase,  
+    CanvasToolRestore         
 } CanvasTool_e;
 
 // Canvas modifiers affect either the active tool or a section of the canvas

@@ -270,6 +270,34 @@ BOOL canvas_draw_rect(HDC* hdc, BYTE* pixelFrame, CanvasRectArgs_s* args){
     return TRUE;
 }
 
+
+BOOL canvas_restore_rect(HDC* hdc, BYTE* pixelFrame, CanvasRectArgs_s* args){
+    short pixelX, pixelY, pxLeftCol, pxRightCol, pxTopRow, pxBotRow;
+    BYTE oldColorCode;
+    CanvasBrushArgs_s brushArgs;
+
+    pxLeftCol = min(args->pt1.x, args->pt2.x);
+    pxRightCol = max(args->pt1.x, args->pt2.x);    
+    pxTopRow = min(args->pt1.y, args->pt2.y);
+    pxBotRow = max(args->pt1.y, args->pt2.y);    
+
+    brushArgs.size = args->size;
+    for(pixelX = pxLeftCol; pixelX <= pxRightCol; pixelX++){
+        for(pixelY = pxTopRow; pixelY <= pxBotRow; pixelY++){
+            brushArgs.pixel = PIXEL_2D_2_1D(pixelX, pixelY);
+
+            oldColorCode = pixelFrame[brushArgs.pixel];
+
+            brushArgs.newColorCode = (oldColorCode + 8)%16;
+
+            canvas_draw_brush(hdc, pixelFrame, &brushArgs);
+        }
+    }
+
+    return TRUE;
+}
+
+
 #if FLOOD_VER == 0
 BOOL canvas_draw_flood_v0(HWND hwnd, HDC* hdc, BYTE* pixelFrame, int pixel, POINT* ptClick, short width, short height, PixelColorCode_e targetColorCode){
     short pixelRow, pixelCol, nextRow, nextCol;
@@ -1544,7 +1572,7 @@ long FAR PASCAL _export WndProcCanvas(HWND hwnd, UINT message, UINT wParam, LONG
                     }
                     ValidateRect(hwnd, NULL);
                     break;
-            }
+                }
 
                 case CanvasToolFlood:{
                     CanvasFloodArgs_s floodArgs;
@@ -1609,6 +1637,25 @@ long FAR PASCAL _export WndProcCanvas(HWND hwnd, UINT message, UINT wParam, LONG
                     }
                     
                     InvalidateRect(hwnd, NULL, FALSE);
+                    break;
+                }
+
+                case CanvasToolRestore:{
+                    CanvasRectArgs_s rectArgs;
+
+                    ptPixelDraw1.x = pixCol;
+                    ptPixelDraw1.y = pixRow;
+                    ptPixelDraw2.x = min(pixCol+4, CANVAS_DIM-1);
+                    ptPixelDraw2.y = min(pixRow+4, CANVAS_DIM-1);
+
+                    rectArgs.pixel = pixel;
+                    rectArgs.size = cxBlock;
+                    rectArgs.newColorCode = GetWindowWord(hwnd, CanvasWordForeColor);
+                    rectArgs.pt1 = ptPixelDraw1;
+                    rectArgs.pt2 = ptPixelDraw2;
+                    canvas_restore_rect(&hdc, pixelFrame, &rectArgs);
+
+                    ValidateRect(hwnd, NULL);
                     break;
                 }
 
