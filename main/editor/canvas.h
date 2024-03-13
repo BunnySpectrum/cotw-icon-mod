@@ -90,6 +90,13 @@ typedef struct CanvasFloodArgs{
     PixelColorCode_e targetColorCode;
 }CanvasFloodArgs_s;
 
+typedef struct CanvasRestoreArgs{
+    short size;
+    POINT pt1;
+    POINT pt2;
+    BYTE* colorData;
+}CanvasRestoreArgs_s;
+
 typedef struct CanvasAction{
     CanvasTool_e tool;
     void* args; //change this to a union of arg structs
