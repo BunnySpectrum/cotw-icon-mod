@@ -80,8 +80,8 @@ BOOL create_history_entry(CanvasTool_e tool){
             doAction->tool = CanvasToolLine;
             doArgs = malloc(sizeof(CanvasLineArgs_s));
 
-            undoAction->tool = CanvasToolLine; //change to rect bit replace
-            undoArgs = malloc(sizeof(CanvasLineArgs_s)); 
+            undoAction->tool = CanvasToolRestore; 
+            undoArgs = malloc(sizeof(CanvasRestoreArgs_s)); 
             break;        
 
         default:
@@ -194,7 +194,7 @@ BYTE canvas_draw_brush(HDC* hdc, BYTE* pixelFrame, CanvasBrushArgs_s* args){
 // Bresenham's line algo
 // https://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm
 // Specifically, the versions tracking error for X and Y
-BOOL canvas_draw_line(HDC* hdc, BYTE* pixelFrame, CanvasLineArgs_s* args){
+BOOL canvas_draw_line(HDC* hdc, BYTE* pixelFrame, CanvasLineArgs_s* args, int* restoreLength, BYTE** restoreData){
     short pixelX, pixelY;
     short deltaX, deltaY, errorD, signX, signY, error2;
     short bailCounter = CANVAS_DIM*2;
@@ -217,6 +217,32 @@ BOOL canvas_draw_line(HDC* hdc, BYTE* pixelFrame, CanvasLineArgs_s* args){
     errorD = deltaX + deltaY;
     pixelX = args->pt1.x;
     pixelY = args->pt1.y;    
+
+    if((restoreLength != NULL) && (*restoreLength > 0) && (*restoreLength <= PIXEL_COUNT)){
+        int leftX, rightX, topY, botY, x, y, counter;
+
+        leftX = min(args->pt1.x, args->pt2.x);
+        rightX = max(args->pt1.x, args->pt2.x);
+        topY = min(args->pt1.y, args->pt2.y);
+        botY = max(args->pt1.y, args->pt2.y);
+
+        *restoreLength = (rightX - leftX + 1)*(botY - topY + 1);
+
+        *restoreData = (BYTE*)malloc(sizeof(BYTE)*(*restoreLength));
+        if(*restoreData == NULL){
+            MessageBox(NULL, "Unable to malloc restore data", "Line", MB_OK);
+            *restoreLength = 0;
+            return FALSE;
+        }
+
+        counter = 0;
+        for(x = leftX; x <= rightX; x++){
+            for(y = topY; y <= botY; y++){
+                (*restoreData)[counter] = pixelFrame[PIXEL_2D_2_1D(x, y)];
+                counter++;
+            }
+        }
+    }
 
     while(bailCounter-- > 0){
         brushArgs.pixel = PIXEL_2D_2_1D(pixelX, pixelY);
@@ -282,10 +308,15 @@ BOOL canvas_restore_rect(HDC* hdc, BYTE* pixelFrame, CanvasRestoreArgs_s* args){
     short counter;
     CanvasBrushArgs_s brushArgs;
 
-    pxLeftCol = min(args->pt1.x, args->pt2.x);
-    pxRightCol = max(args->pt1.x, args->pt2.x);    
-    pxTopRow = min(args->pt1.y, args->pt2.y);
-    pxBotRow = max(args->pt1.y, args->pt2.y);    
+    pxLeftCol = args->ptNW.x;
+    pxRightCol = args->ptSE.x;   
+    pxTopRow = args->ptNW.y;
+    pxBotRow = args->ptSE.y;  
+
+    if((args->dataLength) != ((pxRightCol - pxLeftCol + 1)*(pxBotRow - pxTopRow + 1))){
+        MessageBox(NULL, "Data length error", "Restore", MB_OK);
+        return FALSE;
+    }
 
     brushArgs.size = args->size;
     counter = 0;
@@ -1474,17 +1505,34 @@ long FAR PASCAL _export WndProcCanvas(HWND hwnd, UINT message, UINT wParam, LONG
         }
         
         case WM_COMMAND:{
+            CanvasAction_s* action;
+
             hdc = GetDC(hwnd);
             switch(HIWORD(lParam)){
                 case 0: //undo
-                    // assume only brush tool for now
-                    canvas_draw_brush(&hdc, pixelFrame, canvasHistory[LOWORD(lParam)]->prevAction->args);
-                    ValidateRect(hwnd, NULL);
+                    action = canvasHistory[LOWORD(lParam)]->prevAction;
                     break;
                 case 1: //redo
-                    canvas_draw_brush(&hdc, pixelFrame, canvasHistory[LOWORD(lParam)]->nextAction->args);
+                    action = canvasHistory[LOWORD(lParam)]->nextAction;
                     break;
                 default:
+                    break;
+            }
+            switch(action->tool){
+                case CanvasToolBrush:
+                    canvas_draw_brush(&hdc, pixelFrame, action->args);
+                    ValidateRect(hwnd, NULL);
+                    break;
+                case CanvasToolLine:
+                    canvas_draw_line(&hdc, pixelFrame, action->args, NULL, NULL);
+                    ValidateRect(hwnd, NULL);
+                    break;
+                case CanvasToolRestore:
+                    canvas_restore_rect(&hdc, pixelFrame, action->args);
+                    ValidateRect(hwnd, NULL);
+                    break;
+                default:
+                    MessageBox(NULL, "Unsupported history tool", "Canvas", MB_OK);
                     break;
             }
             ReleaseDC(hwnd, hdc); 
@@ -1531,25 +1579,51 @@ long FAR PASCAL _export WndProcCanvas(HWND hwnd, UINT message, UINT wParam, LONG
                 }
 
                 case CanvasToolLine:{
-                    CanvasLineArgs_s lineArgs;
                     switch (drawState){
                         case DRAW_STATE_START:
                             drawState = DRAW_LINE_FIRST;
                             ptPixelDraw1.x = pixCol;
                             ptPixelDraw1.y = pixRow;
                             break;
-                        case DRAW_LINE_FIRST:
+                        case DRAW_LINE_FIRST:{
+                            CanvasLineArgs_s* lineDoArgs;
+                            CanvasRestoreArgs_s* lineUndoArgs;
+
+
                             ptPixelDraw2.x = pixCol;
                             ptPixelDraw2.y = pixRow;
 
-                            lineArgs.pixel = pixel;
-                            lineArgs.size = cxBlock;
-                            lineArgs.newColorCode = GetWindowWord(hwnd, CanvasWordForeColor);
-                            lineArgs.pt1 = ptPixelDraw1;
-                            lineArgs.pt2 = ptPixelDraw2;                            
-                            canvas_draw_line(&hdc, pixelFrame, &lineArgs);
+                            if(FALSE == create_history_entry(CanvasToolLine)){
+                                MessageBox(NULL, "Unable to create history entry", "Line", MB_OK);
+                                break;
+                            }  
+                            
+                            lineDoArgs = (CanvasLineArgs_s*)canvasHistory[canvasHistoryReadIndex]->nextAction->args;
+                            lineUndoArgs = (CanvasRestoreArgs_s*)canvasHistory[canvasHistoryReadIndex]->prevAction->args; 
+
+                            lineDoArgs->size = cxBlock;
+                            lineDoArgs->newColorCode = GetWindowWord(hwnd, CanvasWordForeColor);
+                            lineDoArgs->pt1 = ptPixelDraw1;
+                            lineDoArgs->pt2 = ptPixelDraw2;   
+
+                            lineUndoArgs->dataLength = PIXEL_COUNT;
+                            if(FALSE == canvas_draw_line(&hdc, pixelFrame, lineDoArgs, &(lineUndoArgs->dataLength), &(lineUndoArgs->colorData))){
+                                free_history_entry(canvasHistoryReadIndex);
+                                drawState = DRAW_STATE_START;
+                                MessageBox(NULL, "Draw line failed", "Line", MB_OK);
+                                break;
+                            }
+
+                            lineUndoArgs->size = cxBlock;
+                            lineUndoArgs->ptNW.x = min(lineDoArgs->pt1.x, lineDoArgs->pt2.x);
+                            lineUndoArgs->ptSE.x = max(lineDoArgs->pt1.x, lineDoArgs->pt2.x);
+                            lineUndoArgs->ptNW.y = min(lineDoArgs->pt1.y, lineDoArgs->pt2.y);
+                            lineUndoArgs->ptSE.y = max(lineDoArgs->pt1.y, lineDoArgs->pt2.y);
+
+                            
                             drawState = DRAW_STATE_START;
                             break;   
+                        }
                     }                         
                     
                     ValidateRect(hwnd, NULL);
@@ -1649,23 +1723,23 @@ long FAR PASCAL _export WndProcCanvas(HWND hwnd, UINT message, UINT wParam, LONG
                     break;
                 }
 
-                case CanvasToolRestore:{
-                    CanvasRestoreArgs_s restoreArgs;
+                // case CanvasToolRestore:{
+                //     CanvasRestoreArgs_s restoreArgs;
 
-                    ptPixelDraw1.x = pixCol;
-                    ptPixelDraw1.y = pixRow;
-                    ptPixelDraw2.x = min(pixCol+4, CANVAS_DIM-1);
-                    ptPixelDraw2.y = min(pixRow+4, CANVAS_DIM-1);
+                //     ptPixelDraw1.x = pixCol;
+                //     ptPixelDraw1.y = pixRow;
+                //     ptPixelDraw2.x = min(pixCol+4, CANVAS_DIM-1);
+                //     ptPixelDraw2.y = min(pixRow+4, CANVAS_DIM-1);
 
-                    restoreArgs.size = cxBlock;
-                    restoreArgs.pt1 = ptPixelDraw1;
-                    restoreArgs.pt2 = ptPixelDraw2;
-                    restoreArgs.colorData = restoreData;
-                    canvas_restore_rect(&hdc, pixelFrame, &restoreArgs);
+                //     restoreArgs.size = cxBlock;
+                //     restoreArgs.pt1 = ptPixelDraw1;
+                //     restoreArgs.pt2 = ptPixelDraw2;
+                //     restoreArgs.colorData = restoreData;
+                //     canvas_restore_rect(&hdc, pixelFrame, &restoreArgs);
 
-                    ValidateRect(hwnd, NULL);
-                    break;
-                }
+                //     ValidateRect(hwnd, NULL);
+                //     break;
+                // }
 
                 default:
                     MessageBeep(0);

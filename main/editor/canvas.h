@@ -68,7 +68,6 @@ typedef struct CanvasBrushArgs{
 }CanvasBrushArgs_s;
 
 typedef struct CanvasLineArgs{
-    int pixel;
     short size;
     PixelColorCode_e newColorCode;
     POINT pt1;
@@ -92,8 +91,9 @@ typedef struct CanvasFloodArgs{
 
 typedef struct CanvasRestoreArgs{
     short size;
-    POINT pt1;
-    POINT pt2;
+    POINT ptNW;
+    POINT ptSE;
+    int dataLength;
     BYTE* colorData;
 }CanvasRestoreArgs_s;
 
