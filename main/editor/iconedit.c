@@ -82,7 +82,23 @@ BOOL create_history_entry(CanvasTool_e tool){
 
             undoAction->tool = CanvasToolRestore; 
             undoArgs = malloc(sizeof(CanvasRestoreArgs_s)); 
-            break;        
+            break;    
+
+        case CanvasToolRect:
+            doAction->tool = CanvasToolRect;
+            doArgs = malloc(sizeof(CanvasRectArgs_s));
+
+            undoAction->tool = CanvasToolRestore; 
+            undoArgs = malloc(sizeof(CanvasRestoreArgs_s)); 
+            break;       
+
+        case CanvasToolFlood:
+            doAction->tool = CanvasToolFlood;
+            doArgs = malloc(sizeof(CanvasFloodArgs_s));
+
+            undoAction->tool = CanvasToolRestore; 
+            undoArgs = malloc(sizeof(CanvasRestoreArgs_s)); 
+            break;   
 
         default:
             goto FAIL;
@@ -279,14 +295,34 @@ BOOL canvas_draw_line(HDC* hdc, BYTE* pixelFrame, CanvasLineArgs_s* args, int* r
 }
 
 
-BOOL canvas_draw_rect(HDC* hdc, BYTE* pixelFrame, CanvasRectArgs_s* args){
+BOOL canvas_draw_rect(HDC* hdc, BYTE* pixelFrame, CanvasRectArgs_s* args, int* restoreLength, BYTE** restoreData){
     short pixelX, pixelY, pxLeftCol, pxRightCol, pxTopRow, pxBotRow;
     CanvasBrushArgs_s brushArgs;
 
     pxLeftCol = min(args->pt1.x, args->pt2.x);
     pxRightCol = max(args->pt1.x, args->pt2.x);    
     pxTopRow = min(args->pt1.y, args->pt2.y);
-    pxBotRow = max(args->pt1.y, args->pt2.y);    
+    pxBotRow = max(args->pt1.y, args->pt2.y);   
+
+    if((restoreLength != NULL) && (*restoreLength > 0) && (*restoreLength <= PIXEL_COUNT)){
+        int counter;
+        *restoreLength = (pxRightCol - pxLeftCol + 1)*(pxBotRow - pxTopRow + 1);
+
+        *restoreData = (BYTE*)malloc(sizeof(BYTE)*(*restoreLength));
+        if(*restoreData == NULL){
+            MessageBox(NULL, "Unable to malloc restore data", "Rect", MB_OK);
+            *restoreLength = 0;
+            return FALSE;
+        }
+
+        counter = 0;
+        for(pixelX = pxLeftCol; pixelX <= pxRightCol; pixelX++){
+            for(pixelY = pxTopRow; pixelY <= pxBotRow; pixelY++){
+                (*restoreData)[counter] = pixelFrame[PIXEL_2D_2_1D(pixelX, pixelY)]; //TODO replace w/ linear copy
+                counter++;
+            }
+        }
+    } 
 
     for(pixelX = pxLeftCol; pixelX <= pxRightCol; pixelX++){
         for(pixelY = pxTopRow; pixelY <= pxBotRow; pixelY++){
@@ -855,8 +891,8 @@ BOOL canvas_draw_flood_v6(BYTE* pixelFrame, int pixel, PixelColorCode_e targetCo
 
 #if FLOOD_VER == 7
 // Fixed length queue of max length without adding duplicates to queue
-// SP about 3k
-BOOL canvas_draw_flood_v7(HDC* hdc, BYTE* pixelFrame, CanvasFloodArgs_s* args){
+// SP about 3k (recheck after adding restore code)
+BOOL canvas_draw_flood_v7(HDC* hdc, BYTE* pixelFrame, CanvasFloodArgs_s* args, int* restoreLength, BYTE** restoreData){
     int pixelQueue[PIXEL_COUNT];
     BYTE pixelAdded[PIXEL_COUNT];
     short pixelRow, pixelCol;
@@ -898,12 +934,12 @@ BOOL canvas_draw_flood_v7(HDC* hdc, BYTE* pixelFrame, CanvasFloodArgs_s* args){
         args->pixel = pixelQueue[readIndex++];
 
         // Fill pixel
-        pixelRow = PIXEL_1D_2_ROW(args->pixel);
-        pixelCol = PIXEL_1D_2_COL(args->pixel);    
-        brushArgs.pixel = args->pixel;
-        brushArgs.size = args->size;
-        brushArgs.newColorCode = args->newColorCode;
-        canvas_draw_brush(hdc, pixelFrame, &brushArgs);
+        // pixelRow = PIXEL_1D_2_ROW(args->pixel);
+        // pixelCol = PIXEL_1D_2_COL(args->pixel);    
+        // brushArgs.pixel = args->pixel;
+        // brushArgs.size = args->size;
+        // brushArgs.newColorCode = args->newColorCode;
+        // canvas_draw_brush(hdc, pixelFrame, &brushArgs);
 
         // Check 4-way adjacent pixels and set flag if need to flood them
         // Left
@@ -952,6 +988,32 @@ BOOL canvas_draw_flood_v7(HDC* hdc, BYTE* pixelFrame, CanvasFloodArgs_s* args){
     callDepthMax = max(callDepthCurrent, callDepthMax);
     callDepthCurrent--;
     return TRUE;
+
+    // if((restoreLength != NULL) && (*restoreLength > 0) && (*restoreLength <= PIXEL_COUNT)){
+    //     int leftX, rightX, topY, botY, x, y, counter;
+
+    //     leftX = min(args->pt1.x, args->pt2.x);
+    //     rightX = max(args->pt1.x, args->pt2.x);
+    //     topY = min(args->pt1.y, args->pt2.y);
+    //     botY = max(args->pt1.y, args->pt2.y);
+
+    //     *restoreLength = (rightX - leftX + 1)*(botY - topY + 1);
+
+    //     *restoreData = (BYTE*)malloc(sizeof(BYTE)*(*restoreLength));
+    //     if(*restoreData == NULL){
+    //         MessageBox(NULL, "Unable to malloc restore data", "Line", MB_OK);
+    //         *restoreLength = 0;
+    //         return FALSE;
+    //     }
+
+    //     counter = 0;
+    //     for(x = leftX; x <= rightX; x++){
+    //         for(y = topY; y <= botY; y++){
+    //             (*restoreData)[counter] = pixelFrame[PIXEL_2D_2_1D(x, y)];
+    //             counter++;
+    //         }
+    //     }
+    // }
 }
 #endif
 #define LOG_LINE_MAX 4
@@ -1527,6 +1589,22 @@ long FAR PASCAL _export WndProcCanvas(HWND hwnd, UINT message, UINT wParam, LONG
                     canvas_draw_line(&hdc, pixelFrame, action->args, NULL, NULL);
                     ValidateRect(hwnd, NULL);
                     break;
+                case CanvasToolRect:
+                    canvas_draw_rect(&hdc, pixelFrame, action->args, NULL, NULL);
+                    ValidateRect(hwnd, NULL);
+                    break;
+                case CanvasToolFlood:
+                    canvas_draw_flood_v7(&hdc, pixelFrame, action->args, NULL, NULL);
+                    ValidateRect(hwnd, NULL);
+                    break;
+                // case CanvasToolErase:{//TODO make function for this
+                //     int x;
+                //     for(x=0; x<PIXEL_COUNT; x++){
+                //         pixelFrame[x] = (BYTE)PixelColorCodeWhite;
+                //     }
+                //     InvalidateRect(hwnd, NULL, FALSE);
+                //     break;
+                // }
                 case CanvasToolRestore:
                     canvas_restore_rect(&hdc, pixelFrame, action->args);
                     ValidateRect(hwnd, NULL);
@@ -1631,27 +1709,49 @@ long FAR PASCAL _export WndProcCanvas(HWND hwnd, UINT message, UINT wParam, LONG
                     }
 
                 case CanvasToolRect:{
-                    CanvasRectArgs_s rectArgs;
-
                     switch (drawState){
                         case DRAW_STATE_START:
                             drawState = DRAW_LINE_FIRST;
                             ptPixelDraw1.x = pixCol;
                             ptPixelDraw1.y = pixRow;
                             break;
-                        case DRAW_LINE_FIRST:
+                        case DRAW_LINE_FIRST:{
+                            CanvasRectArgs_s* rectDoArgs;
+                            CanvasRestoreArgs_s* rectUndoArgs;
+
                             ptPixelDraw2.x = pixCol;
                             ptPixelDraw2.y = pixRow;
 
-                            rectArgs.pixel = pixel;
-                            rectArgs.size = cxBlock;
-                            rectArgs.newColorCode = GetWindowWord(hwnd, CanvasWordForeColor);
-                            rectArgs.pt1 = ptPixelDraw1;
-                            rectArgs.pt2 = ptPixelDraw2;
-                            canvas_draw_rect(&hdc, pixelFrame, &rectArgs);
+                            if(FALSE == create_history_entry(CanvasToolRect)){
+                                MessageBox(NULL, "Unable to create history entry", "Rect", MB_OK);
+                                break;
+                            } 
+
+                            rectDoArgs = (CanvasRectArgs_s*)canvasHistory[canvasHistoryReadIndex]->nextAction->args;
+                            rectUndoArgs = (CanvasRestoreArgs_s*)canvasHistory[canvasHistoryReadIndex]->prevAction->args; 
+
+                            rectDoArgs->size = cxBlock;
+                            rectDoArgs->newColorCode = GetWindowWord(hwnd, CanvasWordForeColor);
+                            rectDoArgs->pt1 = ptPixelDraw1;
+                            rectDoArgs->pt2 = ptPixelDraw2;
+
+                            rectUndoArgs->dataLength = PIXEL_COUNT;
+                            if(FALSE == canvas_draw_rect(&hdc, pixelFrame, rectDoArgs, &(rectUndoArgs->dataLength), &(rectUndoArgs->colorData))){
+                                free_history_entry(canvasHistoryReadIndex);
+                                drawState = DRAW_STATE_START;
+                                MessageBox(NULL, "Draw rect failed", "Rect", MB_OK);
+                                break;
+                            }
+
+                            rectUndoArgs->size = cxBlock;
+                            rectUndoArgs->ptNW.x = min(rectDoArgs->pt1.x, rectDoArgs->pt2.x);
+                            rectUndoArgs->ptSE.x = max(rectDoArgs->pt1.x, rectDoArgs->pt2.x);
+                            rectUndoArgs->ptNW.y = min(rectDoArgs->pt1.y, rectDoArgs->pt2.y);
+                            rectUndoArgs->ptSE.y = max(rectDoArgs->pt1.y, rectDoArgs->pt2.y);
 
                             drawState = DRAW_STATE_START;
-                            break;                            
+                            break;   
+                        }                         
                     }
                     ValidateRect(hwnd, NULL);
                     break;
@@ -1660,9 +1760,7 @@ long FAR PASCAL _export WndProcCanvas(HWND hwnd, UINT message, UINT wParam, LONG
                 case CanvasToolFlood:{
                     CanvasFloodArgs_s floodArgs;
                     if(pixelFrame[pixel] == (BYTE)GetWindowWord(hwnd, CanvasWordForeColor)){
-                        
-                        // MessageBox(hwnd, "Skip", "Flood", MB_OK);
-                        break;
+                        break; //skip, already equal to target color
                     }
                     __asm mov stackPointerStart, sp;
                     stackPointerMin = stackPointerStart;
@@ -1703,7 +1801,7 @@ long FAR PASCAL _export WndProcCanvas(HWND hwnd, UINT message, UINT wParam, LONG
                         floodArgs.size = cxBlock;
                         floodArgs.newColorCode = GetWindowWord(hwnd, CanvasWordForeColor);
                         floodArgs.targetColorCode = pixelFrame[pixel];
-                        canvas_draw_flood_v7(&hdc, pixelFrame, &floodArgs);
+                        canvas_draw_flood_v7(&hdc, pixelFrame, &floodArgs, NULL, NULL);
                     #else
                         callDepthMax = -1;
                     #endif

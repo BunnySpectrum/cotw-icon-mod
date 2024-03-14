@@ -75,7 +75,6 @@ typedef struct CanvasLineArgs{
 }CanvasLineArgs_s;
 
 typedef struct CanvasRectArgs{
-    int pixel;
     short size;
     PixelColorCode_e newColorCode;
     POINT pt1;
