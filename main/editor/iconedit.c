@@ -934,12 +934,12 @@ BOOL canvas_draw_flood_v7(HDC* hdc, BYTE* pixelFrame, CanvasFloodArgs_s* args, i
         args->pixel = pixelQueue[readIndex++];
 
         // Fill pixel
-        // pixelRow = PIXEL_1D_2_ROW(args->pixel);
-        // pixelCol = PIXEL_1D_2_COL(args->pixel);    
-        // brushArgs.pixel = args->pixel;
-        // brushArgs.size = args->size;
-        // brushArgs.newColorCode = args->newColorCode;
-        // canvas_draw_brush(hdc, pixelFrame, &brushArgs);
+        pixelRow = PIXEL_1D_2_ROW(args->pixel);
+        pixelCol = PIXEL_1D_2_COL(args->pixel);    
+        brushArgs.pixel = args->pixel;
+        brushArgs.size = args->size;
+        brushArgs.newColorCode = args->newColorCode;
+        canvas_draw_brush(hdc, pixelFrame, &brushArgs);
 
         // Check 4-way adjacent pixels and set flag if need to flood them
         // Left
@@ -1813,11 +1813,41 @@ long FAR PASCAL _export WndProcCanvas(HWND hwnd, UINT message, UINT wParam, LONG
                 }                        
                     
                 case CanvasToolErase:{
-                    for(x=0; x<PIXEL_COUNT; x++){ 
-                       pixelFrame[x] = (BYTE)PixelColorCodeWhite;
-                    }
+                    CanvasRectArgs_s* eraseDoArgs;
+                    CanvasRestoreArgs_s* eraseUndoArgs;
+                    //Treating erase as a rectangle draw so it will work better if/when I add editing only a section of the canvas
                     
-                    InvalidateRect(hwnd, NULL, FALSE);
+                    if(FALSE == create_history_entry(CanvasToolRect)){
+                        MessageBox(NULL, "Unable to create history entry", "Erase", MB_OK);
+                        break;
+                    }
+
+                    eraseDoArgs = (CanvasRectArgs_s*)canvasHistory[canvasHistoryReadIndex]->nextAction->args;
+                    eraseUndoArgs = (CanvasRestoreArgs_s*)canvasHistory[canvasHistoryReadIndex]->prevAction->args; 
+
+                    eraseDoArgs->size = cxBlock;
+                    eraseDoArgs->newColorCode = PixelColorCodeWhite;
+                    eraseDoArgs->pt1.x = 0;
+                    eraseDoArgs->pt1.y = 0;
+                    eraseDoArgs->pt2.x = CANVAS_DIM-1;
+                    eraseDoArgs->pt2.y = CANVAS_DIM-1;
+
+                    eraseUndoArgs->dataLength = PIXEL_COUNT;
+                    if(FALSE == canvas_draw_rect(&hdc, pixelFrame, eraseDoArgs, &(eraseUndoArgs->dataLength), &(eraseUndoArgs->colorData))){
+                                free_history_entry(canvasHistoryReadIndex);
+                                drawState = DRAW_STATE_START;
+                                MessageBox(NULL, "Erase failed", "Erase", MB_OK);
+                                break;
+                    }
+
+                    eraseUndoArgs->size = cxBlock;
+                    eraseUndoArgs->ptNW.x = min(eraseDoArgs->pt1.x, eraseDoArgs->pt2.x);
+                    eraseUndoArgs->ptSE.x = max(eraseDoArgs->pt1.x, eraseDoArgs->pt2.x);
+                    eraseUndoArgs->ptNW.y = min(eraseDoArgs->pt1.y, eraseDoArgs->pt2.y);
+                    eraseUndoArgs->ptSE.y = max(eraseDoArgs->pt1.y, eraseDoArgs->pt2.y);
+                    
+                    ValidateRect(hwnd, NULL);
+                    // InvalidateRect(hwnd, NULL, FALSE);
                     break;
                 }
 
