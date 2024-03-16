@@ -340,7 +340,6 @@ BOOL canvas_draw_rect(HDC* hdc, BYTE* pixelFrame, CanvasRectArgs_s* args, int* r
 
 BOOL canvas_restore_rect(HDC* hdc, BYTE* pixelFrame, CanvasRestoreArgs_s* args){
     short pixelX, pixelY, pxLeftCol, pxRightCol, pxTopRow, pxBotRow;
-    BYTE oldColorCode;
     short counter;
     CanvasBrushArgs_s brushArgs;
 
@@ -1540,7 +1539,6 @@ long FAR PASCAL _export WndProcCanvas(HWND hwnd, UINT message, UINT wParam, LONG
     static WORD drawState;
     static POINT ptPixelDraw1, ptPixelDraw2;
     HWND hwndParent;
-    CanvasHistoryEntry_s* newHistoryEntry;
 
 
     switch(message){
@@ -1851,24 +1849,6 @@ long FAR PASCAL _export WndProcCanvas(HWND hwnd, UINT message, UINT wParam, LONG
                     break;
                 }
 
-                // case CanvasToolRestore:{
-                //     CanvasRestoreArgs_s restoreArgs;
-
-                //     ptPixelDraw1.x = pixCol;
-                //     ptPixelDraw1.y = pixRow;
-                //     ptPixelDraw2.x = min(pixCol+4, CANVAS_DIM-1);
-                //     ptPixelDraw2.y = min(pixRow+4, CANVAS_DIM-1);
-
-                //     restoreArgs.size = cxBlock;
-                //     restoreArgs.pt1 = ptPixelDraw1;
-                //     restoreArgs.pt2 = ptPixelDraw2;
-                //     restoreArgs.colorData = restoreData;
-                //     canvas_restore_rect(&hdc, pixelFrame, &restoreArgs);
-
-                //     ValidateRect(hwnd, NULL);
-                //     break;
-                // }
-
                 default:
                     MessageBeep(0);
                     ValidateRect(hwnd, NULL);
@@ -1939,9 +1919,8 @@ long FAR PASCAL _export WndProcCanvas(HWND hwnd, UINT message, UINT wParam, LONG
 long FAR PASCAL _export WndProcLog(HWND hwnd, UINT message, UINT wParam, LONG lParam){
     HDC hdc;
     PAINTSTRUCT ps;
-    RECT rect;
     static short cxChar, cxCaps, cyChar, cxClient, cyClient, nMaxWidth, nVscrollPos, nVscrollMax, nHscrollPos, nHscrollMax;
-    short i, x, y, nPaintBegin, nPaintEnd, nVscrollInc, nHscrollInc;
+    short i, x, y, nVscrollInc, nHscrollInc;
     TEXTMETRIC tm;
 
     switch(message){
