@@ -932,13 +932,9 @@ BOOL canvas_draw_flood_v7(HDC* hdc, BYTE* pixelFrame, CanvasFloodArgs_s* args, i
         // Get next pixel
         args->pixel = pixelQueue[readIndex++];
 
-        // Fill pixel
+        // Compute row and column
         pixelRow = PIXEL_1D_2_ROW(args->pixel);
         pixelCol = PIXEL_1D_2_COL(args->pixel);    
-        brushArgs.pixel = args->pixel;
-        brushArgs.size = args->size;
-        brushArgs.newColorCode = args->newColorCode;
-        canvas_draw_brush(hdc, pixelFrame, &brushArgs);
 
         // Check 4-way adjacent pixels and set flag if need to flood them
         // Left
@@ -976,7 +972,15 @@ BOOL canvas_draw_flood_v7(HDC* hdc, BYTE* pixelFrame, CanvasFloodArgs_s* args, i
     // Check if pixels left to check
     }while(readIndex < writeIndex);
     
-    
+    // Draw all pixels
+    for (i=0; i<PIXEL_COUNT; i++){
+        if(pixelAdded[i] == 1){
+            brushArgs.pixel = i;
+            brushArgs.size = args->size;
+            brushArgs.newColorCode = args->newColorCode;
+            canvas_draw_brush(hdc, pixelFrame, &brushArgs);
+        }
+    }
 
     FLOOD_EXIT:
     // Capture SP depth
