@@ -1357,8 +1357,8 @@ long FAR PASCAL _export WndProcCanvas(HWND hwnd, UINT message, UINT wParam, LONG
                     }
 
                     floodUndoArgs->size = cxBlock;
-                    nLength = wsprintf (szBuffer, "Flood undo args. Length %d.", floodUndoArgs->dataLength);
-                    MessageBox(NULL, szBuffer, "Flood", MB_OK);
+                    // nLength = wsprintf (szBuffer, "Flood undo args. Length %d.", floodUndoArgs->dataLength);
+                    // MessageBox(NULL, szBuffer, "Flood", MB_OK);
 
 
                     ValidateRect(hwnd, NULL);
