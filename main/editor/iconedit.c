@@ -9,11 +9,14 @@
 #include "toolbar.h"
 #include "colorbox.h"
 #include "log.h"
+#include "utils.h"
 
 static char szBuffer[80];
 // static char szLogMessage[80];
-static char szLogLines[10][80];
-static logWriteIndex, logReadIndex;
+// static char szLogLines[10][80];
+// static logWriteIndex, logReadIndex;
+
+
 static short nLength;
 static HWND debugWindow;
 #define CALL_DEPTH_LIMIT 1024
@@ -585,20 +588,8 @@ BOOL canvas_draw_flood_v7(HDC* hdc, BYTE* pixelFrame, CanvasFloodArgs_s* args, i
     
 }
 #endif
-#define LOG_LINE_MAX 4
-void log_message(char* message){
-// static char szLogLines[LOG_LINE_MAX][80];
-// static logWriteIndex, logReadIndex;
 
-strcpy(szLogLines[logWriteIndex], message);
 
-logWriteIndex = (logWriteIndex+1)%LOG_LINE_MAX;
-
-if(logWriteIndex == logReadIndex){
-    logReadIndex = (logReadIndex + 1)%LOG_LINE_MAX;
-}
-
-}
 
 int PASCAL WinMain(HANDLE hInstance, HANDLE hPrevInstance, LPSTR lpszCmdParam, int nCmdShow){
     static char szNameApp[] = "CharacterCreator";
@@ -707,7 +698,7 @@ long FAR PASCAL _export WndProcMain(HWND hwnd, UINT message, UINT wParam, LONG l
             ReleaseDC(hwnd, hdc);
 
             // wsprintf(szLogMessage, "Hello world");
-            logWriteIndex = logReadIndex = 0;
+            
             nLength = wsprintf (szBuffer, "Brush entry: %d.", sizeof(CanvasHistoryEntry_s) + 2*sizeof(CanvasAction_s) + sizeof(CanvasBrushArgs_s));
             log_message(szBuffer);
 
@@ -941,6 +932,7 @@ long FAR PASCAL _export WndProcToolbar(HWND hwnd, UINT message, UINT wParam, LON
         case WM_SIZE:
             cxBlock = LOWORD(lParam) / TOOLBAR_COLS;
             cyBlock = HIWORD(lParam) / TOOLBAR_ROWS;
+            // MessageBox(NULL, "Toolbar created", "Tools", MB_OK);
             return 0;
 
         case WM_LBUTTONDOWN:{
@@ -1466,155 +1458,6 @@ long FAR PASCAL _export WndProcCanvas(HWND hwnd, UINT message, UINT wParam, LONG
             PostQuitMessage(0);
             return 0;
         }
-    }
-    return DefWindowProc(hwnd, message, wParam, lParam);
-}
-
-// Much of the scroll text window code is from Charles Petzold's SYSMETS3.C (pg 79)
-long FAR PASCAL _export WndProcLog(HWND hwnd, UINT message, UINT wParam, LONG lParam){
-    HDC hdc;
-    PAINTSTRUCT ps;
-    static short cxChar, cxCaps, cyChar, cxClient, cyClient, nMaxWidth, nVscrollPos, nVscrollMax, nHscrollPos, nHscrollMax;
-    short i, x, y, nVscrollInc, nHscrollInc;
-    TEXTMETRIC tm;
-
-    switch(message){
-        case WM_CREATE:
-            for (x=0; x<LOG_EXTRA_WORDS; x+=2){
-                SetWindowWord(hwnd, x, 0);
-            }
-
-            hdc = GetDC(hwnd);
-
-            GetTextMetrics(hdc, &tm);
-            cxChar = tm.tmAveCharWidth;
-            cxCaps = (tm.tmPitchAndFamily & 1 ? 3 : 2)*cxChar/2;
-            cyChar = tm.tmHeight + tm.tmExternalLeading;
-
-            ReleaseDC(hwnd, hdc);
-
-            nMaxWidth = 80 * cxChar;
-            return 0;
-
-        case WM_SIZE:
-            cxClient = LOWORD(lParam);
-            cyClient = HIWORD(lParam);
-
-            nVscrollMax = max(0, cyClient/cyChar);
-            nVscrollPos = min(nVscrollPos, nVscrollMax);
-
-            // SetScrollRange(hwnd, SB_VERT, 0, nVscrollMax, FALSE);
-            // SetScrollPos(hwnd, SB_VERT, nVscrollPos, TRUE);
-
-            nHscrollMax = max(0, 2 + (nMaxWidth - cxClient) / cxChar);
-            nHscrollPos = min(nHscrollPos, nHscrollMax);
-
-            // SetScrollRange(hwnd, SB_HORZ, 0, nHscrollMax, FALSE);
-            // SetScrollPos(hwnd, SB_HORZ, nHscrollPos, TRUE);
-
-            return 0;
-
-        case WM_VSCROLL:
-            switch(wParam){
-                case SB_TOP:
-                    nVscrollInc = -nVscrollPos;
-                    break;
-
-                case SB_BOTTOM:
-                    nVscrollInc = nVscrollMax - nVscrollPos;
-                    break;
-
-                case SB_LINEUP:
-                    nVscrollInc = -1;
-                    break;
-
-                case SB_LINEDOWN:
-                    nVscrollInc = 1;
-                    break;
-
-                case SB_PAGEUP:
-                    nVscrollInc = min(-1, -cyClient/cyChar);
-                    break;
-
-                case SB_PAGEDOWN:
-                    nVscrollInc = max(1, cyClient/cyChar);
-                    break;
-
-                case SB_THUMBTRACK:
-                    nVscrollInc = LOWORD(lParam) - nVscrollPos;
-                    break;
-
-                default:
-                    nVscrollInc = 0;
-                    break;
-            }
-            nVscrollInc = max(-nVscrollPos, min(nVscrollInc, nVscrollMax - nVscrollPos));
-            if(nVscrollInc != 0){
-                nVscrollPos += nVscrollInc;
-                ScrollWindow(hwnd, 0, -cyChar*nVscrollInc, NULL, NULL);
-                SetScrollPos(hwnd, SB_VERT, nVscrollPos, TRUE);
-                UpdateWindow(hwnd);
-            }
-            return 0;
-
-        case WM_HSCROLL:
-            switch(wParam){
-                case SB_LINEUP:
-                    nHscrollInc = -1;
-                    break;
-
-                case SB_LINEDOWN:
-                    nHscrollInc = 1;
-                    break;
-
-                case SB_PAGEUP:
-                    nHscrollInc = -8;
-                    break;
-
-                case SB_PAGEDOWN:
-                    nHscrollInc = 8;
-                    break;
-
-                case SB_THUMBPOSITION:
-                    nHscrollInc = LOWORD(lParam) - nHscrollPos;
-                    break;
-
-                default:
-                    nHscrollInc = 0;
-                    break;
-            }
-            nHscrollInc = max(-nHscrollPos, min(nHscrollInc, nHscrollMax - nHscrollPos));
-            if(nHscrollInc != 0){
-                nHscrollPos += nHscrollInc;
-                ScrollWindow(hwnd, -cxChar*nHscrollInc, 0, NULL, NULL);
-                SetScrollPos(hwnd, SB_HORZ, nHscrollPos, TRUE);
-                UpdateWindow(hwnd);
-            }
-            return 0;
-
-        case WM_PAINT:
-            hdc = BeginPaint(hwnd, &ps);
-            // nPaintBegin = max(0, nVscrollPos);// + ps.rcPaint.top / cyChar - 1);
-            // nPaintEnd = min(LOG_LINE_MAX, nVscrollPos+1);// + ps.rcPaint.bottom / cyChar);
-
-            for(i=logReadIndex; ((i%LOG_LINE_MAX)!=logWriteIndex) && ((i-logReadIndex + nVscrollPos) <  nVscrollMax); i++){
-                x = cxChar * (1-nHscrollPos);
-                y = cyChar * (1-nVscrollPos+i-logReadIndex);
-
-                TextOut(hdc, x, y, szLogLines[i%LOG_LINE_MAX], lstrlen(szLogLines[i%LOG_LINE_MAX]));
-            }
-            
-            // Rectangle(hdc, rect.left, rect.top, rect.right, rect.bottom);
-            // MoveTo(hdc, rect.left, rect.top);
-            // LineTo(hdc, rect.right, rect.bottom);
-            // MoveTo(hdc, rect.left, rect.bottom);
-            // LineTo(hdc, rect.right, rect.top);
-
-            
-            // DrawText(hdc, szLogMessage, -1, &rect, 
-            //             DT_SINGLELINE);
-            EndPaint(hwnd, &ps);
-            return 0;
     }
     return DefWindowProc(hwnd, message, wParam, lParam);
 }

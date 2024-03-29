@@ -7,10 +7,18 @@
 #include "windef.h"                     
 #endif 
 
-long FAR PASCAL _export WndProcLog(HWND, UINT, UINT, LONG);
+#include <string.h>
 
-char szNameLog[] = "Log";
+#include "utils.h"
+
+long FAR PASCAL _export WndProcLog(HWND, UINT, UINT, LONG);
+void FAR PASCAL _export log_message(char* message);
+
+static char szNameLog[] = "Log";
 #define LOG_EXTRA_WORDS 0 
+static char szLogLines[10][80];
+static int logWriteIndex, logReadIndex;
+#define LOG_LINE_MAX 4
 
 
 
