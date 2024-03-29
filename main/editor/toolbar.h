@@ -8,7 +8,7 @@
 #endif 
 
 long FAR PASCAL _export WndProcToolbar(HWND, UINT, UINT, LONG);
-char szNameToolbar[] = "Toolbar";
+static char szNameToolbar[] = "Toolbar";
 
 #define TOOLBAR_ROWS 10
 #define TOOLBAR_COLS 2
@@ -32,6 +32,6 @@ typedef enum ToolbarTool{
     ToolbarToolMAX,       
 } ToolbarTool_e;
 
-const LPSTR toolbarToolNames[] = {"Brush", "Line", "Flood", "Rect", "Erase", "Restore", "Undo", "Redo", ""};
+static const LPSTR toolbarToolNames[] = {"Brush", "Line", "Flood", "Rect", "Erase", "Restore", "Undo", "Redo", ""};
 
 #endif

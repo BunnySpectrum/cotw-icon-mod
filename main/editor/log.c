@@ -40,7 +40,7 @@ long FAR PASCAL _export WndProcLog(HWND hwnd, UINT message, UINT wParam, LONG lP
             ReleaseDC(hwnd, hdc);
 
             nMaxWidth = 80 * cxChar;
-            MessageBox(NULL, "Log create", "Log", MB_OK);
+            // MessageBox(NULL, "Log create", "Log", MB_OK);
             return 0;
 
         case WM_SIZE:
