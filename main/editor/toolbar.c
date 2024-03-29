@@ -12,14 +12,12 @@ long FAR PASCAL _export WndProcToolbar(HWND hwnd, UINT message, UINT wParam, LON
     short nLength ;
     static WORD selectedTool, activeTool;
     HWND hwndParent;
-    static WORD selfID;
 
     switch(message){
         case WM_CREATE:
             SetWindowWord(hwnd, ToolbarWordTool, ToolbarToolBrush);
             selectedTool = ToolbarToolBrush;  
             activeTool = selectedTool;   
-            selfID = GetWindowWord(hwnd, GWW_ID);  
             return 0;
         
         case WM_SIZE:
@@ -45,7 +43,7 @@ long FAR PASCAL _export WndProcToolbar(HWND hwnd, UINT message, UINT wParam, LON
             // nLength = wsprintf(szBuffer, "ID %d, code %d, to %d", CHILD_ID_COLORBOX, activeColorCode, hwndParent);
             // MessageBox(hwnd, szBuffer, "ColorBox", MB_OK);
 
-            SendMessage(hwndParent, WM_COMMAND, selfID, selectedTool);
+            SendMessage(hwndParent, WM_COMMAND, GetWindowWord(hwnd, GWW_ID), selectedTool);
             // MessageBeep(1);
             InvalidateRect(hwnd, NULL, FALSE);
 

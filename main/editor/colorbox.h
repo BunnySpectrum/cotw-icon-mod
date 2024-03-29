@@ -7,8 +7,10 @@
 #include "windef.h"                     
 #endif 
 
+#include "iconedit.h"
+
 long FAR PASCAL _export WndProcColorBox(HWND, UINT, UINT, LONG);
-char szNameColorBox[] = "Color";
+static char szNameColorBox[] = "Color";
 
 // Get/SetWindowWord offsets
 typedef enum ColorBoxWindowWords{
