@@ -2,13 +2,23 @@
 #define _CANVAS_H_
 
 #include <WINDOWS.H>
+#include <memory.h>
+#include <string.h>
+#include <stdlib.h>
+#include <stdio.h>
 
 #ifndef WIN31  
 #include "windef.h"                     
 #endif 
 
+#include "utils.h"
+#include "log.h"
+
 long FAR PASCAL _export WndProcCanvas(HWND, UINT, UINT, LONG);
-char szNameCanvas[] = "Canvas";
+static char szNameCanvas[] = "Canvas";
+#define CANVAS_HISTORY_LEN 16
+
+
 
 #define CANVAS_DIM 32
 #define PIXEL_COUNT (CANVAS_DIM) * (CANVAS_DIM)
@@ -108,6 +118,7 @@ typedef struct CanvasHistoryEntry{
     CanvasAction_s* prevAction;
 }CanvasHistoryEntry_s;
 
-#define CANVAS_HISTORY_LEN 8
+extern int canvasHistoryWriteIndex, canvasHistoryReadIndex;
+extern CanvasHistoryEntry_s* canvasHistory[CANVAS_HISTORY_LEN];
 
 #endif
