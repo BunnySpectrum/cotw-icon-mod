@@ -8,13 +8,11 @@
 #endif  
 
 #include "utils.h"
+#include "cmd.h"
 
 long FAR PASCAL _export WndProcMain(HWND, UINT, UINT, LONG);
+static char szNameApp[] = "CharacterCreator";
 
-#define CHILD_ID_CANVAS 1
-#define CHILD_ID_LOG 2
-#define CHILD_ID_TOOLBAR 3
-#define CHILD_ID_COLORBOX 4
 
 
 

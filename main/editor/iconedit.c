@@ -53,7 +53,6 @@ BOOL map_toolbar_tool_to_canvas(CanvasTool_e* canvasTool, ToolbarTool_e toolbarT
 
 
 int PASCAL WinMain(HANDLE hInstance, HANDLE hPrevInstance, LPSTR lpszCmdParam, int nCmdShow){
-    static char szNameApp[] = "CharacterCreator";
     HWND hwnd;
     MSG msg;
     WNDCLASS wndclass;
@@ -68,7 +67,7 @@ int PASCAL WinMain(HANDLE hInstance, HANDLE hPrevInstance, LPSTR lpszCmdParam, i
         wndclass.hIcon = LoadIcon(NULL, IDI_APPLICATION);
         wndclass.hCursor = LoadCursor(NULL, IDC_CROSS);
         wndclass.hbrBackground = GetStockObject(WHITE_BRUSH);
-        wndclass.lpszMenuName = NULL;
+        wndclass.lpszMenuName = "CHARCRTR";
         wndclass.lpszClassName = szNameApp;
         RegisterClass(&wndclass);
 
@@ -147,6 +146,11 @@ long FAR PASCAL _export WndProcMain(HWND hwnd, UINT message, UINT wParam, LONG l
     static BYTE CTRL_ARROWS = CTRL_GROUP_CURSOR;
     ToolbarTool_e toolbarTool;
     CanvasTool_e canvasTool;
+
+    // Menudemo (Petzold, ch 9, pg 349)
+    static int wColorID[5] = {WHITE_BRUSH, LTGRAY_BRUSH, GRAY_BRUSH, DKGRAY_BRUSH, BLACK_BRUSH};
+    static WORD wSelection = IDM_WHITE;
+    HMENU hMenu;
 
     switch(message){
         case WM_CREATE:{
@@ -317,42 +321,81 @@ long FAR PASCAL _export WndProcMain(HWND hwnd, UINT message, UINT wParam, LONG l
         }
         
         case WM_COMMAND:{
-            // nLength = wsprintf (szBuffer, "wParam: %d, lParam %ld.", wParam, lParam);
+            hMenu = GetMenu(hwnd);
 
-            // MessageBox(hwnd, szBuffer, "IconEdit", MB_OK);
-            if(wParam == CHILD_ID_COLORBOX){
-                SetWindowWord(hwndCanvas, CanvasWordForeColor, LOWORD(lParam));
-                SetWindowWord(hwndCanvas, CanvasWordBackColor, HIWORD(lParam));
-            }else if(wParam == CHILD_ID_TOOLBAR){
-                toolbarTool = (ToolbarTool_e) LOWORD(lParam);
-                switch(toolbarTool){
-                    case ToolbarToolUndo:
-                        if((canvasHistory[canvasHistoryReadIndex] != NULL) && (canvasHistory[canvasHistoryReadIndex]->valid == TRUE)){                            
-                            SendMessage(hwndCanvas, WM_COMMAND, 0, MAKELONG(canvasHistoryReadIndex, 0));
-                            canvasHistoryWriteIndex = canvasHistoryReadIndex;
-                            canvasHistoryReadIndex = canvasHistoryReadIndex > 0 ? (canvasHistoryReadIndex - 1) : (CANVAS_HISTORY_LEN-1);
+            switch(wParam){
+                case IDM_NEW:
+                case IDM_OPEN:
+                case IDM_SAVE:
+                case IDM_SAVEAS:
+                    MessageBeep(0);
+                    return 0;
 
-                        }
-                        break;
-                    case ToolbarToolRedo:
-                        if((canvasHistory[canvasHistoryWriteIndex] != NULL) && (canvasHistory[canvasHistoryWriteIndex]->valid == TRUE)){
-                            SendMessage(hwndCanvas, WM_COMMAND, 0, MAKELONG(canvasHistoryWriteIndex, 1));
-                            canvasHistoryReadIndex = canvasHistoryWriteIndex;
-                            canvasHistoryWriteIndex = (canvasHistoryWriteIndex + 1)%CANVAS_HISTORY_LEN;                           
-                        }
-                        
-                        break;
-                    default:
-                        map_toolbar_tool_to_canvas(&canvasTool, toolbarTool);
-                        SetWindowWord(hwndCanvas, CanvasWordTool, (WORD)canvasTool);
-                        break;
-                }
-                
+                case IDM_EXIT:
+                    SendMessage(hwnd, WM_CLOSE, 0, 0L);
+                    return 0;
 
-            }else if(wParam == CHILD_ID_CANVAS){
-                InvalidateRect(hwndLog, NULL, FALSE);
+                case IDM_UNDO:
+                case IDM_REDO:
+                case IDM_WHITE:
+                case IDM_LTGRAY:
+                case IDM_GRAY:
+                case IDM_DKGRAY:
+                case IDM_BLACK:
+                    CheckMenuItem(hMenu, wSelection, MF_UNCHECKED);
+                    wSelection = wParam;
+                    CheckMenuItem(hMenu, wSelection, MF_CHECKED);
+
+                    SetClassWord(hwnd, GCW_HBRBACKGROUND,
+                    GetStockObject(wColorID[wParam - IDM_WHITE]));
+
+                    InvalidateRect(hwnd, NULL, TRUE);
+                    return 0;
+
+                case IDM_HELP:
+                    MessageBox(hwnd, "Help not yet implemented.", szNameApp, MB_ICONEXCLAMATION | MB_OK);
+                    return 0;
+
+                case IDM_ABOUT:
+                    MessageBox(hwnd, "Icon Editor.", szNameApp, MB_ICONINFORMATION | MB_OK);
+                    return 0;
+
+                case CHILD_ID_COLORBOX:
+                    SetWindowWord(hwndCanvas, CanvasWordForeColor, LOWORD(lParam));
+                    SetWindowWord(hwndCanvas, CanvasWordBackColor, HIWORD(lParam));
+                    return 0;
+
+                case CHILD_ID_TOOLBAR:
+                    toolbarTool = (ToolbarTool_e) LOWORD(lParam);
+                    switch(toolbarTool){
+                        case ToolbarToolUndo:
+                            if((canvasHistory[canvasHistoryReadIndex] != NULL) && (canvasHistory[canvasHistoryReadIndex]->valid == TRUE)){                            
+                                SendMessage(hwndCanvas, WM_COMMAND, 0, MAKELONG(canvasHistoryReadIndex, 0));
+                                canvasHistoryWriteIndex = canvasHistoryReadIndex;
+                                canvasHistoryReadIndex = canvasHistoryReadIndex > 0 ? (canvasHistoryReadIndex - 1) : (CANVAS_HISTORY_LEN-1);
+
+                            }
+                            break;
+                        case ToolbarToolRedo:
+                            if((canvasHistory[canvasHistoryWriteIndex] != NULL) && (canvasHistory[canvasHistoryWriteIndex]->valid == TRUE)){
+                                SendMessage(hwndCanvas, WM_COMMAND, 0, MAKELONG(canvasHistoryWriteIndex, 1));
+                                canvasHistoryReadIndex = canvasHistoryWriteIndex;
+                                canvasHistoryWriteIndex = (canvasHistoryWriteIndex + 1)%CANVAS_HISTORY_LEN;                           
+                            }
+                            
+                            break;
+                        default:
+                            map_toolbar_tool_to_canvas(&canvasTool, toolbarTool);
+                            SetWindowWord(hwndCanvas, CanvasWordTool, (WORD)canvasTool);
+                            break;
+                    }
+                    return 0;
+
+                case CHILD_ID_CANVAS:
+                    InvalidateRect(hwndLog, NULL, FALSE);
+                    return 0;
             }
-            return 0;
+            break;
         }
 
         case WM_SETFOCUS:

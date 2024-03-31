@@ -29,7 +29,7 @@ LFLAGS_R_WEXE = /NOLOGO /NOD /PACKC:61440 /STACK:10240 /ALIGN:16 /ONERROR:NOEXE
 LIBS_D_WEXE = mafxcwd oldnames libw mlibcew commdlg.lib olecli.lib olesvr.lib shell.lib 
 LIBS_R_WEXE = mafxcw oldnames libw mlibcew commdlg.lib olecli.lib olesvr.lib shell.lib 
 RCFLAGS = /nologo
-RESFLAGS = /nologo
+RESFLAGS = /nologo -t
 RUNFLAGS = 
 DEFFILE = CHARCRTR.DEF
 OBJS_EXT = UTILS.OBJ LOG.OBJ TOOLBAR.OBJ COLORBOX.OBJ CANVAS.OBJ 
@@ -59,8 +59,10 @@ all:	$(PROJ).EXE $(PROJ).BSC
 ICONEDIT.OBJ:	ICONEDIT.C $(ICONEDIT_DEP)
 	$(CC) $(CFLAGS) $(CCREATEPCHFLAG) /c ICONEDIT.C
 
+CHARCRTR.RES: CHARCRTR.rc cmd.h
+	$(RC) CHARCRTR.rc
 
-$(PROJ).EXE::	ICONEDIT.OBJ $(OBJS_EXT) $(DEFFILE)
+$(PROJ).EXE::	ICONEDIT.OBJ $(OBJS_EXT) $(DEFFILE) CHARCRTR.RES
 	echo >NUL @<<$(PROJ).CRF
 ICONEDIT.OBJ +
 $(OBJS_EXT)
@@ -72,7 +74,7 @@ $(LIBS)
 $(DEFFILE);
 <<
 	link $(LFLAGS) @$(PROJ).CRF
-	$(RC) $(RESFLAGS) $@
+	$(RC) $(RESFLAGS) $(PROJ).RES
 
 
 run: $(PROJ).EXE

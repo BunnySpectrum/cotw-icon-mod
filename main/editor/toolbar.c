@@ -69,7 +69,7 @@ long FAR PASCAL _export WndProcToolbar(HWND hwnd, UINT message, UINT wParam, LON
 
                     Rectangle(hdc, rectText.left, rectText.top, 
                                     rectText.right, rectText.bottom);
-                    DrawText (hdc, cBuffer, -1, &rectText, DT_CENTER | DT_NOCLIP) ;
+                    DrawText (hdc, cBuffer, -1, &rectText, DT_SINGLELINE | DT_VCENTER | DT_CENTER | DT_NOCLIP) ;
                 }
             }
 
