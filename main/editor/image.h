@@ -12,6 +12,13 @@
 
 #include "utils.h"
 
+typedef struct {
+    BITMAPFILEHEADER bmfh;
+    BITMAPINFOHEADER bmih;
+    BYTE huge* lpDibBits;
+} BitmapFields_s;
+
+
 // Starting point for this file was showdib.c by Charles Petzold
 
 extern BYTE huge *lpDib;
@@ -32,6 +39,14 @@ BYTE huge* FAR PASCAL _export GetDibBitsAddr (BYTE huge * lpDib);
 
 // Read file into memory
 BYTE huge* FAR PASCAL _export ReadDib (char * szFileName);
+
+void FAR PASCAL _export WriteDib (char * szFileName, BITMAP* img);
+
+void FAR PASCAL _export InspectBMP (HDC hdc, HBITMAP hBmp);
+
+void FAR PASCAL _export CreateDIBBitmapFromFile (char* szFileName, BitmapFields_s* bmpFields);
+
+
 
 
 #endif

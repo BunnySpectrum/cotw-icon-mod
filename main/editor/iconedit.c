@@ -158,15 +158,17 @@ long FAR PASCAL _export WndProcMain(HWND hwnd, UINT message, UINT wParam, LONG l
                                ""};
     
     static OPENFILENAME ofn;
+    static HBITMAP hBitmap;
     static short cxClient, cyClient, xClient, yClient;
     // static WORD wDisplay = IDM_ACTUAL;
-    BYTE huge *lpDibBits;
-    short cxDib, cyDib;
+    // BYTE huge *lpDibBits;
+    // short cxDib, cyDib;
 
     // Menudemo (Petzold, ch 9, pg 349)
     static int wColorID[5] = {WHITE_BRUSH, LTGRAY_BRUSH, GRAY_BRUSH, DKGRAY_BRUSH, BLACK_BRUSH};
     static WORD wSelection = IDM_WHITE;
     HMENU hMenu;
+    BitmapFields_s inputBitmap;//, outputBitmap;
 
     switch(message){
         case WM_CREATE:{
@@ -369,15 +371,17 @@ long FAR PASCAL _export WndProcMain(HWND hwnd, UINT message, UINT wParam, LONG l
                             lpDib = NULL;
                         }
 
-                        lpDib = ReadDib(szFileName);
+                        // lpDib = ReadDib(szFileName);
+                        CreateDIBBitmapFromFile(szFileName, &inputBitmap);
+                        lpDib = inputBitmap.lpDibBits;
 
-                        if (lpDib == NULL)
+                        if (inputBitmap.lpDibBits == NULL)
                         {
-                            MessageBox(hwnd, szNameApp,
-                                       "Could not open DIB file",
-                                       MB_ICONEXCLAMATION | MB_OK);
+                            MessageBox(hwnd, "Error reading image file", szNameApp,  MB_ICONEXCLAMATION | MB_OK);
                         }else{
-                            copy_img_to_canvas(lpDib, GetDibBitsAddr(lpDib), GetDibWidth(lpDib), GetDibHeight(lpDib));
+                            copy_img_to_canvas(inputBitmap.lpDibBits, inputBitmap.lpDibBits, (WORD)inputBitmap.bmih.biWidth, (WORD)inputBitmap.bmih.biHeight);
+                            // hdc = GetDC(hwnd);
+                            // hBitmap = CreateDIBBitmap( )
                         }
 
                         InvalidateRect(hwnd, NULL, TRUE);
@@ -386,7 +390,14 @@ long FAR PASCAL _export WndProcMain(HWND hwnd, UINT message, UINT wParam, LONG l
                 }
                 case IDM_SAVE:
                 case IDM_SAVEAS:
-                    MessageBeep(0);
+                    // if (GetSaveFileName(&ofn))
+                    // {
+                    //     hBitmap = CreateBitmap(32, 32, 0, 4, NULL);
+                        
+                    //     WriteDib(szFileName, hBitmap);
+
+                       
+                    // }
                     return 0;
 
                 case IDM_EXIT:

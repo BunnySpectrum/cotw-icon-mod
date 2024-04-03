@@ -14,6 +14,7 @@
 BOOL FAR PASCAL _export pixel_color_code_to_rgb(WORD code, COLORREF* color);
 void FAR PASCAL _export pixel_num_to_bitfield(int pixel, short* byteNum, short* byteOffset);
 
+
 // Color definitions
 #define COLOR_BLACK (RGB(0, 0, 0))
 #define COLOR_GRAY (RGB(128, 128, 128))

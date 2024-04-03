@@ -493,6 +493,10 @@ FLOOD_EXIT:
     return TRUE;
 }
 
+void FAR PASCAL _export save_canvas_to_img(){
+    ;
+}
+
 void FAR PASCAL _export copy_img_to_canvas(BYTE huge *lpImg, BYTE huge *addrStart, WORD width, WORD height)
 {
     BYTE huge *lpDibBits;
