@@ -15,7 +15,7 @@
 
 long FAR PASCAL _export WndProcMain(HWND, UINT, UINT, LONG);
 static char szNameApp[] = "CharacterCreator";
-extern BYTE huge *lpDib;
+// extern BYTE huge *lpDib;
 
 
 

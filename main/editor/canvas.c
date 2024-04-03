@@ -493,14 +493,45 @@ FLOOD_EXIT:
     return TRUE;
 }
 
-void FAR PASCAL _export save_canvas_to_img(){
-    ;
+void FAR PASCAL _export copy_canvas_to_img(BYTE huge *lpImg){
+    int idx, idx2;
+    BYTE shift, mask, row, col;
+
+    row = CANVAS_DIM-1;
+    col = 0;
+    for (idx = 0; idx < PIXEL_COUNT; idx++)
+    {
+        if (idx % 2 != 0)
+        {
+            shift = 0;
+            mask = 0x0F;
+        }
+        else
+        {
+            shift = 4;
+            mask = 0xF0;   
+        }
+
+        // index in pixelFrame to grab
+        idx2 = PIXEL_2D_2_1D(col, row);
+
+        //Clear the bits
+        *(lpImg + idx / 2) &= ~mask;
+        *(lpImg + idx / 2) |= (pixelFrame[idx2] << shift);
+
+        if(col < CANVAS_DIM-1){
+            col++;
+        }else{
+            col = 0;
+            row--;
+        }
+    }
 }
 
 void FAR PASCAL _export copy_img_to_canvas(BYTE huge *lpImg, BYTE huge *addrStart, WORD width, WORD height)
 {
-    BYTE huge *lpDibBits;
-    short cxDib, cyDib;
+    // BYTE huge *lpDibBits;
+    // short cxDib, cyDib;
     int idx, idx2;
     BYTE shift, mask, row, col;
 
@@ -515,8 +546,8 @@ void FAR PASCAL _export copy_img_to_canvas(BYTE huge *lpImg, BYTE huge *addrStar
     col = 0;
     for (idx = 0; idx < PIXEL_COUNT; idx++)
     {
-        // pixelFrame[idx] = *(addrStart + idx/2) & 0x0F;
-        if (idx % 2 == 0)
+
+        if (idx % 2 != 0)
         {
             shift = 0;
             mask = 0x0F;

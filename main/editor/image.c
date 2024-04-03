@@ -159,7 +159,7 @@ BYTE huge* FAR PASCAL _export ReadDib(char *szFileName)
 
 void FAR PASCAL _export CreateDIBBitmapFromFile (char* szFileName, BitmapFields_s* bmpFields){
     // BITMAPFILEHEADER bmfh;
-    BYTE huge *lpDib;
+    BYTE huge *lpDib, huge *lpColorTable;
     DWORD dwDibSize, dwOffset, dwHeaderSize;
     int hFile;
     WORD wDibRead;
@@ -208,12 +208,32 @@ void FAR PASCAL _export CreateDIBBitmapFromFile (char* szFileName, BitmapFields_
         goto CLEANUP;
     }
 
+    // Indirect calculation of color table size
+    (bmpFields->colorTable).dwColorTableSize = (bmpFields->bmfh).bfOffBits - sizeof(BITMAPFILEHEADER) - sizeof(BITMAPINFOHEADER);
+    lpColorTable = (BYTE huge *)GlobalAllocPtr(GMEM_MOVEABLE, (bmpFields->colorTable).dwColorTableSize);
+    if (lpColorTable == NULL)
+    {
+        MessageBox(NULL, "lpColorTable was null", "ReadDib", MB_OK);
+        goto CLEANUP;
+    }
+
+    wDibRead = (WORD)((bmpFields->colorTable).dwColorTableSize);
+    if (wDibRead != _lread(hFile, (LPSTR)(lpColorTable), wDibRead))
+    {
+        GlobalFreePtr(lpColorTable);
+        MessageBox(NULL, "Unable to read color table", "CreateBMP", MB_OK);
+        goto CLEANUP;
+    }
+    (bmpFields->colorTable).lpColorData = lpColorTable;
+
+
     // Seek to beginning of bitmap bits
     _llseek(hFile, (bmpFields->bmfh).bfOffBits, 0);
     dwDibSize = (bmpFields->bmih).biSizeImage;
     lpDib = (BYTE huge *)GlobalAllocPtr(GMEM_MOVEABLE, dwDibSize);
     if (lpDib == NULL)
     {
+        GlobalFreePtr(lpColorTable);
         MessageBox(NULL, "lpDib was null", "ReadDib", MB_OK);
         goto CLEANUP;
     }
@@ -226,6 +246,7 @@ void FAR PASCAL _export CreateDIBBitmapFromFile (char* szFileName, BitmapFields_
         if (wDibRead != _lread(hFile, (LPSTR)(lpDib + dwOffset), wDibRead))
         {
             GlobalFreePtr(lpDib);
+            GlobalFreePtr(lpColorTable);
             MessageBox(NULL, "Error reading bits", "ReadDib", MB_OK);
             goto CLEANUP;
         }
@@ -241,35 +262,45 @@ CLEANUP:
     
 }
 
+void FAR PASCAL _export WriteDIBBitmapToFile(char *szFileName, BitmapFields_s bmpFields)
+{
+    int hFile;
 
-// void FAR PASCAL _export WriteDib(char *szFileName, HBITMAP hBmp)
-// {
-//     // BITMAPFILEHEADER bmfh;
-//     // BYTE huge *lpDib;
-//     // DWORD dwDibSize, dwOffset, dwHeaderSize;
-//     // int hFile;
-//     // WORD wDibRead;
-//     // HANDLE hBuffer;
-//     // LPSTR lpstrBuffer;
+    if (-1 == (hFile = _lopen(szFileName, OF_WRITE | OF_SHARE_EXCLUSIVE)))
+    {
+        if (-1 == (hFile = _lcreat(szFileName, 0)))
+        {
+            MessageBox(NULL, "Failed to create", "WriteDib", MB_OK);
+            return;
+        }
+    }
 
 
-//     // if (-1 == (hFile = _lopen(szFileName, OF_WRITE | OF_SHARE_EXCLUSIVE)))
-//     // {
-//     //     if (-1 == (hFile = _lcreat(szFileName, 0)))
-//     //     {
-//     //         MessageBox(NULL, "Failed to create", "WriteDib", MB_OK);
-//     //         return;
-//     //     }
-//     // }
+    if(sizeof(bmpFields.bmfh) != _lwrite(hFile, &(bmpFields.bmfh), sizeof(bmpFields.bmfh))){
+        MessageBox(NULL, "Error writing file header", "WriteDib", MB_OK);
+        goto CLEANUP;
+    }
 
-    
+    if (sizeof(bmpFields.bmih) != _lwrite(hFile, &(bmpFields.bmih), sizeof(bmpFields.bmih)))
+    {
+        MessageBox(NULL, "Error writing info header", "WriteDib", MB_OK);
+        goto CLEANUP;
+    }
 
-//     // if(sizeof(hBmp) != _lwrite(hFile, hBmp, sizeof(hBmp))){
-//     //     _lclose(hFile);
-//     //     return;
-//     // }
+    if (bmpFields.colorTable.dwColorTableSize != _lwrite(hFile, bmpFields.colorTable.lpColorData, (UINT)bmpFields.colorTable.dwColorTableSize))
+    {
+        MessageBox(NULL, "Error writing color table", "WriteDib", MB_OK);
+        goto CLEANUP;
+    }
 
-//     // _lclose(hFile);
-//     return;
+    if (bmpFields.bmih.biSizeImage != _lwrite(hFile, bmpFields.lpDibBits, (UINT)bmpFields.bmih.biSizeImage))
+    {
+        MessageBox(NULL, "Error writing bits", "WriteDib", MB_OK);
+        goto CLEANUP;
+    }
 
-// }
+CLEANUP:
+    _lclose(hFile);
+    return;
+}
+

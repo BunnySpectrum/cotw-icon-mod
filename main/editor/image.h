@@ -13,11 +13,35 @@
 #include "utils.h"
 
 typedef struct {
+    BYTE huge* lpColorData;
+    DWORD dwColorTableSize;
+} ColorTable_s;
+
+typedef struct {
     BITMAPFILEHEADER bmfh;
     BITMAPINFOHEADER bmih;
+    ColorTable_s colorTable;
     BYTE huge* lpDibBits;
 } BitmapFields_s;
 
+RGBQUAD colorTable16Colors[16] = {
+    {0x00, 0x00, 0x00, 0x00},
+    {0x00, 0x00, 0x80, 0x00},
+    {0x00, 0x80, 0x00, 0x00},
+    {0x00, 0x80, 0x80, 0x00},
+    {0x80, 0x00, 0x00, 0x00},
+    {0x80, 0x00, 0x80, 0x00},
+    {0x80, 0x80, 0x00, 0x00},
+    {0x80, 0x80, 0x80, 0x00},
+    {0xC0, 0xC0, 0xC0, 0x00},
+    {0x00, 0x00, 0xFF, 0x00},
+    {0x00, 0xFF, 0x00, 0x00},
+    {0x00, 0xFF, 0xFF, 0x00},
+    {0xFF, 0x00, 0x00, 0x00},
+    {0xFF, 0x00, 0xFF, 0x00},
+    {0xFF, 0xFF, 0x00, 0x00},
+    {0xFF, 0xFF, 0xFF, 0x00},
+};
 
 // Starting point for this file was showdib.c by Charles Petzold
 
@@ -40,7 +64,7 @@ BYTE huge* FAR PASCAL _export GetDibBitsAddr (BYTE huge * lpDib);
 // Read file into memory
 BYTE huge* FAR PASCAL _export ReadDib (char * szFileName);
 
-void FAR PASCAL _export WriteDib (char * szFileName, BITMAP* img);
+void FAR PASCAL _export WriteDIBBitmapToFile (char * szFileName, BitmapFields_s bmpFields);
 
 void FAR PASCAL _export InspectBMP (HDC hdc, HBITMAP hBmp);
 

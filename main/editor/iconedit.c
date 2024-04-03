@@ -12,7 +12,7 @@
 #include "utils.h"
 #include "image.h"
 
-BYTE huge *lpDib;
+
 
 static char szBuffer[80];
 
@@ -168,7 +168,7 @@ long FAR PASCAL _export WndProcMain(HWND hwnd, UINT message, UINT wParam, LONG l
     static int wColorID[5] = {WHITE_BRUSH, LTGRAY_BRUSH, GRAY_BRUSH, DKGRAY_BRUSH, BLACK_BRUSH};
     static WORD wSelection = IDM_WHITE;
     HMENU hMenu;
-    BitmapFields_s inputBitmap;//, outputBitmap;
+    static BitmapFields_s inputBitmap, outputBitmap;
 
     switch(message){
         case WM_CREATE:{
@@ -365,23 +365,30 @@ long FAR PASCAL _export WndProcMain(HWND hwnd, UINT message, UINT wParam, LONG l
                 {
                     if (GetOpenFileName(&ofn))
                     {
-                        if (lpDib != NULL)
+                        if (inputBitmap.lpDibBits != NULL)
                         {
-                            GlobalFreePtr(lpDib);
-                            lpDib = NULL;
+                            GlobalFreePtr(inputBitmap.lpDibBits);
+                            inputBitmap.lpDibBits = NULL;
                         }
+
+                        if (inputBitmap.colorTable.lpColorData != NULL)
+                        {
+                            GlobalFreePtr(inputBitmap.colorTable.lpColorData);
+                            inputBitmap.colorTable.lpColorData = NULL;
+                        }
+
+
 
                         // lpDib = ReadDib(szFileName);
                         CreateDIBBitmapFromFile(szFileName, &inputBitmap);
-                        lpDib = inputBitmap.lpDibBits;
+                        // lpDib = inputBitmap.lpDibBits;
 
                         if (inputBitmap.lpDibBits == NULL)
                         {
                             MessageBox(hwnd, "Error reading image file", szNameApp,  MB_ICONEXCLAMATION | MB_OK);
                         }else{
                             copy_img_to_canvas(inputBitmap.lpDibBits, inputBitmap.lpDibBits, (WORD)inputBitmap.bmih.biWidth, (WORD)inputBitmap.bmih.biHeight);
-                            // hdc = GetDC(hwnd);
-                            // hBitmap = CreateDIBBitmap( )
+                            
                         }
 
                         InvalidateRect(hwnd, NULL, TRUE);
@@ -390,14 +397,44 @@ long FAR PASCAL _export WndProcMain(HWND hwnd, UINT message, UINT wParam, LONG l
                 }
                 case IDM_SAVE:
                 case IDM_SAVEAS:
-                    // if (GetSaveFileName(&ofn))
-                    // {
-                    //     hBitmap = CreateBitmap(32, 32, 0, 4, NULL);
-                        
-                    //     WriteDib(szFileName, hBitmap);
+                    if (GetSaveFileName(&ofn))
+                    {
+                        // if(NULL == inputBitmap.lpDibBits){
+                        //     MessageBox(hwnd, "Need to open file first", szNameApp,  MB_ICONEXCLAMATION | MB_OK);
+                        //     return 0;
+                        // }
+
+                        outputBitmap.bmfh.bfType = 0x4d42;
+                        outputBitmap.bmfh.bfSize = 0x276;
+                        outputBitmap.bmfh.bfReserved1 = 0x0;
+                        outputBitmap.bmfh.bfReserved2 = 0x0;
+                        outputBitmap.bmfh.bfOffBits = 0x76;
+
+                        outputBitmap.bmih.biSize = 0x28;
+                        outputBitmap.bmih.biWidth = 0x20;
+                        outputBitmap.bmih.biHeight = 0x20;
+                        outputBitmap.bmih.biPlanes = 0x1;
+                        outputBitmap.bmih.biBitCount = 0x4;
+                        outputBitmap.bmih.biCompression = 0x0;
+                        outputBitmap.bmih.biSizeImage = 0x200;
+                        outputBitmap.bmih.biXPelsPerMeter = 0xEC4;
+                        outputBitmap.bmih.biYPelsPerMeter = 0xEC4;
+                        outputBitmap.bmih.biClrUsed = 0x0;
+                        outputBitmap.bmih.biClrImportant = 0x0;
+
+                        outputBitmap.colorTable.dwColorTableSize = sizeof(colorTable16Colors);
+                        outputBitmap.colorTable.lpColorData = (BYTE huge*)colorTable16Colors;
+
+                        outputBitmap.lpDibBits = (BYTE huge *)GlobalAllocPtr(GMEM_MOVEABLE, outputBitmap.bmih.biSizeImage);
+                        if(outputBitmap.lpDibBits == NULL){
+                            MessageBox(NULL, "Unable to make output pointer", "Save As", MB_OK);
+                        }
+
+                        copy_canvas_to_img(outputBitmap.lpDibBits);
+                        WriteDIBBitmapToFile(szFileName, outputBitmap);
 
                        
-                    // }
+                    }
                     return 0;
 
                 case IDM_EXIT:
@@ -478,9 +515,19 @@ long FAR PASCAL _export WndProcMain(HWND hwnd, UINT message, UINT wParam, LONG l
             return 0;
 
         case WM_DESTROY:
-            if (lpDib != NULL)
+            if (inputBitmap.lpDibBits != NULL)
             {
-                GlobalFreePtr(lpDib);
+                GlobalFreePtr(inputBitmap.lpDibBits);
+            }
+
+            if (inputBitmap.colorTable.lpColorData != NULL)
+            {
+                GlobalFreePtr(inputBitmap.colorTable.lpColorData);
+            }
+            
+            if (outputBitmap.lpDibBits != NULL)
+            {
+                GlobalFreePtr(inputBitmap.lpDibBits);
             }
 
             PostQuitMessage(0);
