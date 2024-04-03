@@ -10,6 +10,9 @@
 #include "colorbox.h"
 #include "log.h"
 #include "utils.h"
+#include "image.h"
+
+BYTE huge *lpDib;
 
 static char szBuffer[80];
 
@@ -147,6 +150,19 @@ long FAR PASCAL _export WndProcMain(HWND hwnd, UINT message, UINT wParam, LONG l
     ToolbarTool_e toolbarTool;
     CanvasTool_e canvasTool;
 
+    // For ReadDib
+    static char szFileName[_MAX_PATH],
+        szTitleName[_MAX_FNAME + _MAX_EXT];
+    static char *szFilter[] = {"Bitmap Files (*.BMP)", "*.bmp",
+                               "DIB Files (*.DIB)", "*.dib",
+                               ""};
+    
+    static OPENFILENAME ofn;
+    static short cxClient, cyClient, xClient, yClient;
+    // static WORD wDisplay = IDM_ACTUAL;
+    BYTE huge *lpDibBits;
+    short cxDib, cyDib;
+
     // Menudemo (Petzold, ch 9, pg 349)
     static int wColorID[5] = {WHITE_BRUSH, LTGRAY_BRUSH, GRAY_BRUSH, DKGRAY_BRUSH, BLACK_BRUSH};
     static WORD wSelection = IDM_WHITE;
@@ -185,7 +201,17 @@ long FAR PASCAL _export WndProcMain(HWND hwnd, UINT message, UINT wParam, LONG l
                                         hwnd, CHILD_ID_LOG, GetWindowWord(hwnd, GWW_HINSTANCE), NULL);
 
             debugWindow = hwndLog;
-            
+
+            // ReadDib section
+            ofn.lStructSize = sizeof(OPENFILENAME);
+            ofn.hwndOwner = hwnd;
+            ofn.lpstrFilter = szFilter[0];
+            ofn.lpstrFile = szFileName;
+            ofn.nMaxFile = _MAX_PATH;
+            ofn.lpstrFileTitle = szTitleName;
+            ofn.nMaxFileTitle = _MAX_FNAME + _MAX_EXT;
+            ofn.lpstrDefExt = "bmp";
+
             return 0;
             }
         case WM_SIZE:{
@@ -209,6 +235,12 @@ long FAR PASCAL _export WndProcMain(HWND hwnd, UINT message, UINT wParam, LONG l
 
             // nLength = wsprintf(szBuffer, "Handle %d", hwnd);
             // MessageBox(hwnd, szBuffer, "Main", MB_OK);
+
+            //ReadDib section
+            xClient = cxBlock + max(0, (4*cxBlock - canvasSize)/2);
+            yClient = max(0, (5*cyBlock - canvasSize)/2);
+            cxClient = canvasSize;
+            cyClient = canvasSize;
             return 0;
         }  
         case WM_KEYDOWN:{    
@@ -316,6 +348,8 @@ long FAR PASCAL _export WndProcMain(HWND hwnd, UINT message, UINT wParam, LONG l
                 }
             }
 
+
+
             EndPaint(hwnd, &ps);
             return 0;
         }
@@ -326,6 +360,30 @@ long FAR PASCAL _export WndProcMain(HWND hwnd, UINT message, UINT wParam, LONG l
             switch(wParam){
                 case IDM_NEW:
                 case IDM_OPEN:
+                {
+                    if (GetOpenFileName(&ofn))
+                    {
+                        if (lpDib != NULL)
+                        {
+                            GlobalFreePtr(lpDib);
+                            lpDib = NULL;
+                        }
+
+                        lpDib = ReadDib(szFileName);
+
+                        if (lpDib == NULL)
+                        {
+                            MessageBox(hwnd, szNameApp,
+                                       "Could not open DIB file",
+                                       MB_ICONEXCLAMATION | MB_OK);
+                        }else{
+                            copy_img_to_canvas(lpDib, GetDibBitsAddr(lpDib), GetDibWidth(lpDib), GetDibHeight(lpDib));
+                        }
+
+                        InvalidateRect(hwnd, NULL, TRUE);
+                    }
+                    return 0;
+                }
                 case IDM_SAVE:
                 case IDM_SAVEAS:
                     MessageBeep(0);
@@ -342,6 +400,7 @@ long FAR PASCAL _export WndProcMain(HWND hwnd, UINT message, UINT wParam, LONG l
                 case IDM_GRAY:
                 case IDM_DKGRAY:
                 case IDM_BLACK:
+                {
                     CheckMenuItem(hMenu, wSelection, MF_UNCHECKED);
                     wSelection = wParam;
                     CheckMenuItem(hMenu, wSelection, MF_CHECKED);
@@ -351,6 +410,7 @@ long FAR PASCAL _export WndProcMain(HWND hwnd, UINT message, UINT wParam, LONG l
 
                     InvalidateRect(hwnd, NULL, TRUE);
                     return 0;
+                }
 
                 case IDM_HELP:
                     MessageBox(hwnd, "Help not yet implemented.", szNameApp, MB_ICONEXCLAMATION | MB_OK);
@@ -407,9 +467,13 @@ long FAR PASCAL _export WndProcMain(HWND hwnd, UINT message, UINT wParam, LONG l
             return 0;
 
         case WM_DESTROY:
+            if (lpDib != NULL)
+            {
+                GlobalFreePtr(lpDib);
+            }
+
             PostQuitMessage(0);
             return 0;
-
     }
     return DefWindowProc(hwnd, message, wParam, lParam);
 }

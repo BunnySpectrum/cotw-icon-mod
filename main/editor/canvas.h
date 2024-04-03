@@ -13,10 +13,14 @@
 
 #include "utils.h"
 #include "log.h"
+#include "image.h"
 
 long FAR PASCAL _export WndProcCanvas(HWND, UINT, UINT, LONG);
 static char szNameCanvas[] = "Canvas";
 #define CANVAS_HISTORY_LEN 16
+
+
+void FAR PASCAL _export copy_img_to_canvas(BYTE huge *lpImg, BYTE huge *addrStart, WORD width, WORD height);
 
 
 
@@ -26,6 +30,7 @@ static char szNameCanvas[] = "Canvas";
 #define PIXEL_1D_2_ROW(pixel) ((pixel) / (CANVAS_DIM))
 #define PIXEL_1D_2_COL(pixel) ((pixel) % (CANVAS_DIM))
 #define PIXEL_BQUEUE_LEN ((PIXEL_COUNT)/8)
+static BYTE pixelFrame[PIXEL_COUNT];
 
 // Get/SetWindowWord offsets
 typedef enum CanvasWindowWords{

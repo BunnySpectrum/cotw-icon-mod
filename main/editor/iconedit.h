@@ -2,6 +2,9 @@
 #define _ICONEDIT_H_
 
 #include <WINDOWS.H>
+#include <windowsx.h>
+#include <commdlg.h>
+#include <stdlib.h>
 
 #ifndef WIN31  
 #include "windef.h"                     
@@ -12,6 +15,7 @@
 
 long FAR PASCAL _export WndProcMain(HWND, UINT, UINT, LONG);
 static char szNameApp[] = "CharacterCreator";
+extern BYTE huge *lpDib;
 
 
 

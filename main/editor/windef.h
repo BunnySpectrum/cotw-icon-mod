@@ -5,6 +5,7 @@
 #define FAR  
 #define PASCAL  
 #define _export
+#define huge
 typedef char* LPSTR;
 typedef const char* LPCSTR;
 
