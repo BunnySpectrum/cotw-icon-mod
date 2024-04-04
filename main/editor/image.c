@@ -1,6 +1,25 @@
 
 #include "image.h"
 
+RGBQUAD colorTable16Colors[16] = {
+    {0x00, 0x00, 0x00, 0x00},
+    {0x00, 0x00, 0x80, 0x00},
+    {0x00, 0x80, 0x00, 0x00},
+    {0x00, 0x80, 0x80, 0x00},
+    {0x80, 0x00, 0x00, 0x00},
+    {0x80, 0x00, 0x80, 0x00},
+    {0x80, 0x80, 0x00, 0x00},
+    {0x80, 0x80, 0x80, 0x00},
+    {0xC0, 0xC0, 0xC0, 0x00},
+    {0x00, 0x00, 0xFF, 0x00},
+    {0x00, 0xFF, 0x00, 0x00},
+    {0x00, 0xFF, 0xFF, 0x00},
+    {0xFF, 0x00, 0x00, 0x00},
+    {0xFF, 0x00, 0xFF, 0x00},
+    {0xFF, 0xFF, 0x00, 0x00},
+    {0xFF, 0xFF, 0xFF, 0x00},
+};
+
 void FAR PASCAL _export InspectBMP (HDC hdc, HBITMAP hBmp){
 
 }
@@ -304,3 +323,59 @@ CLEANUP:
     return;
 }
 
+
+void FAR PASCAL _export WriteICOToFile (char * szFileName, IconFields_s iconFields, ICONDIRENTRY_s iconEntry, BitmapFields_s bmpFields, ImageMask_s imageMask)
+{
+    int hFile;
+
+    if (-1 == (hFile = _lcreat(szFileName, 0)))
+    {
+        MessageBox(NULL, "Failed to create", "WriteICO", MB_OK);
+        return;
+    }
+
+    // Icon dir
+    if(sizeof(iconFields.idir) != _lwrite(hFile, &(iconFields.idir), sizeof(iconFields.idir))){
+        MessageBox(NULL, "Error writing ICONDIR", "WriteICO", MB_OK);
+        goto CLEANUP;
+    }
+
+    // Icon entry (only 1 for now, maybe 2 later for b/w)
+    if (sizeof(iconEntry) != _lwrite(hFile, &(iconEntry), sizeof(iconEntry)))
+    {
+        MessageBox(NULL, "Error writing icon entry", "WriteICO", MB_OK);
+        goto CLEANUP;
+    }
+
+    // BMP info header
+    if (sizeof(bmpFields.bmih) != _lwrite(hFile, &(bmpFields.bmih), sizeof(bmpFields.bmih)))
+    {
+        MessageBox(NULL, "Error writing BMP info header", "WriteICO", MB_OK);
+        goto CLEANUP;
+    }
+
+    // Color table
+    if (bmpFields.colorTable.dwColorTableSize != _lwrite(hFile, bmpFields.colorTable.lpColorData, (UINT)bmpFields.colorTable.dwColorTableSize))
+    {
+        MessageBox(NULL, "Error writing color table", "WriteICO", MB_OK);
+        goto CLEANUP;
+    }
+
+    // Image bits
+    if ((bmpFields.bmih.biSizeImage - 0x80) != _lwrite(hFile, bmpFields.lpDibBits, (UINT)bmpFields.bmih.biSizeImage - 0x80))
+    {
+        MessageBox(NULL, "Error writing bits", "WriteICO", MB_OK);
+        goto CLEANUP;
+    }
+
+    // Image mask
+    if (imageMask.wMaskSize != _lwrite(hFile, imageMask.lpImageMask, (UINT)imageMask.wMaskSize))
+    {
+        MessageBox(NULL, "Error writing image mask", "WriteICO", MB_OK);
+        goto CLEANUP;
+    }
+
+CLEANUP:
+    _lclose(hFile);
+    return;
+}

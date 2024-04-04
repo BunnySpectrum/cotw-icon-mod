@@ -587,6 +587,64 @@ void FAR PASCAL _export copy_img_to_canvas(BYTE huge *lpImg, BYTE huge *addrStar
     //               DIB_RGB_COLORS, SRCCOPY);
 }
 
+void FAR PASCAL _export build_image_mask_from_canvas(ImageMask_s *imageMask)
+{
+    int idx, idx2;
+    BYTE shift, row, col, data;
+
+    // Huge pointer only needed if size greater than 64kB (so an image w/ 512k pixels)
+    imageMask->lpImageMask = (BYTE far*)GlobalAllocPtr(GMEM_MOVEABLE, PIXEL_COUNT/8);
+    if (imageMask->lpImageMask == NULL)
+    {
+        MessageBox(NULL, "Unable to make image mask pointer", "build image mask", MB_OK);
+        imageMask->wMaskSize = 0;
+        return;
+    }
+    imageMask->wMaskSize = PIXEL_COUNT/8;
+
+    row = CANVAS_DIM - 1;
+    col = 0;
+    // Iterate from pixel 0 but access pixelFrame by row/col for easier traversal via scanline (i.e. bottom row first, left to right)
+    for (idx = 0; idx < PIXEL_COUNT; idx++)
+    {
+        // index in pixelFrame to grab
+        idx2 = PIXEL_2D_2_1D(col, row);
+
+        // switch(pixelFrame[idx2]){
+        //     case PixelColorCodeTransparent:
+        //         data = 1;
+        //         break;
+        //     case PixelColorCodeInvert:
+        //         data = 1;
+        //         break;
+        //     case PixelColorCodeWhite: //for now, assume white means transparent
+        //         data = 0;
+        //         break;
+        //     default:
+        //         data = 0;
+        //         break;
+        // }
+        data = 0;
+        
+        
+        // Clear the bits
+        shift = 7 - (idx % 8);
+        *(imageMask->lpImageMask + idx / 8) &= ~(1<<shift);
+
+        *(imageMask->lpImageMask + idx / 8) |= (data << shift);
+
+        if (col < CANVAS_DIM - 1)
+        {
+            col++;
+        }
+        else
+        {
+            col = 0;
+            row--;
+        }
+    }
+}
+
 long FAR PASCAL _export WndProcCanvas(HWND hwnd, UINT message, UINT wParam, LONG lParam)
 {
     HDC hdc;
@@ -608,7 +666,7 @@ long FAR PASCAL _export WndProcCanvas(HWND hwnd, UINT message, UINT wParam, LONG
 
     static LOGPEN lpBlack = {PS_SOLID, 2, 2, RGB(0, 0, 0)},
                 lpWhite = {PS_SOLID, 1, 1, RGB(255, 255, 255)};
-    HPEN hPenBlack, hPenWhite;
+    HPEN hPenBlack;
 
     switch (message)
     {

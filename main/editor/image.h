@@ -18,34 +18,47 @@ typedef struct {
 } ColorTable_s;
 
 typedef struct {
+    BYTE far* lpImageMask;
+    WORD wMaskSize;
+} ImageMask_s;
+
+typedef struct {
     BITMAPFILEHEADER bmfh;
     BITMAPINFOHEADER bmih;
     ColorTable_s colorTable;
     BYTE huge* lpDibBits;
 } BitmapFields_s;
 
-RGBQUAD colorTable16Colors[16] = {
-    {0x00, 0x00, 0x00, 0x00},
-    {0x00, 0x00, 0x80, 0x00},
-    {0x00, 0x80, 0x00, 0x00},
-    {0x00, 0x80, 0x80, 0x00},
-    {0x80, 0x00, 0x00, 0x00},
-    {0x80, 0x00, 0x80, 0x00},
-    {0x80, 0x80, 0x00, 0x00},
-    {0x80, 0x80, 0x80, 0x00},
-    {0xC0, 0xC0, 0xC0, 0x00},
-    {0x00, 0x00, 0xFF, 0x00},
-    {0x00, 0xFF, 0x00, 0x00},
-    {0x00, 0xFF, 0xFF, 0x00},
-    {0xFF, 0x00, 0x00, 0x00},
-    {0xFF, 0x00, 0xFF, 0x00},
-    {0xFF, 0xFF, 0x00, 0x00},
-    {0xFF, 0xFF, 0xFF, 0x00},
-};
+// at 0x36 in BMP, at 0x40 in ICO
+extern RGBQUAD colorTable16Colors[16];
+
+#define TYPE_ICON 1
+#define TYPE_CUR 2
+
+typedef struct{
+    WORD wRsvd;
+    WORD wType;
+    WORD wIconCount;
+} ICONDIR_s;
+
+typedef struct{
+    BYTE bWidth;
+    BYTE bHeight;
+    BYTE bColorCount;
+    BYTE bRsvd;
+    WORD wPlanes;
+    WORD wBitCount;
+    DWORD dwSize;
+    DWORD dwOffset;
+} ICONDIRENTRY_s;
+
+typedef struct{
+    ICONDIR_s idir;
+} IconFields_s;
 
 // Starting point for this file was showdib.c by Charles Petzold
 
-extern BYTE huge *lpDib;
+
 
 // Return biSize from bitmap info header
 DWORD GetDibInfoHeaderSize (BYTE huge * lpDib);
@@ -65,6 +78,7 @@ BYTE huge* FAR PASCAL _export GetDibBitsAddr (BYTE huge * lpDib);
 BYTE huge* FAR PASCAL _export ReadDib (char * szFileName);
 
 void FAR PASCAL _export WriteDIBBitmapToFile (char * szFileName, BitmapFields_s bmpFields);
+void FAR PASCAL _export WriteICOToFile (char * szFileName, IconFields_s iconFields, ICONDIRENTRY_s iconEntry, BitmapFields_s bmpFields, ImageMask_s imageMask);
 
 void FAR PASCAL _export InspectBMP (HDC hdc, HBITMAP hBmp);
 

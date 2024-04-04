@@ -69,7 +69,10 @@ typedef enum PixelColorCode{
     PixelColorCodeAqua = 14,
 
     PixelColorCodeSilver = 7,
-    PixelColorCodeWhite = 15
+    PixelColorCodeWhite = 15,
+
+    PixelColorCodeTransparent = 16,
+    PixelColorCodeInvert = 17
 } PixelColorCode_e;
 
 

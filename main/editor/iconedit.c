@@ -155,6 +155,7 @@ long FAR PASCAL _export WndProcMain(HWND hwnd, UINT message, UINT wParam, LONG l
         szTitleName[_MAX_FNAME + _MAX_EXT];
     static char *szFilter[] = {"Bitmap Files (*.BMP)", "*.bmp",
                                "DIB Files (*.DIB)", "*.dib",
+                               "ICON Files (*.ICO)", "*.ico",
                                ""};
     
     static OPENFILENAME ofn;
@@ -169,6 +170,9 @@ long FAR PASCAL _export WndProcMain(HWND hwnd, UINT message, UINT wParam, LONG l
     static WORD wSelection = IDM_WHITE;
     HMENU hMenu;
     static BitmapFields_s inputBitmap, outputBitmap;
+    static IconFields_s inputIcon, outputIcon;
+    static ICONDIRENTRY_s iconEntry;
+    static ImageMask_s imageMask;
 
     switch(message){
         case WM_CREATE:{
@@ -399,41 +403,93 @@ long FAR PASCAL _export WndProcMain(HWND hwnd, UINT message, UINT wParam, LONG l
                 case IDM_SAVEAS:
                     if (GetSaveFileName(&ofn))
                     {
-                        // if(NULL == inputBitmap.lpDibBits){
-                        //     MessageBox(hwnd, "Need to open file first", szNameApp,  MB_ICONEXCLAMATION | MB_OK);
-                        //     return 0;
-                        // }
+                        if (1 == 1)
+                        {
+                            // ICO file
+                            outputIcon.idir.wRsvd = 0;
+                            outputIcon.idir.wType = TYPE_ICON;
+                            outputIcon.idir.wIconCount = 1;
 
-                        outputBitmap.bmfh.bfType = 0x4d42;
-                        outputBitmap.bmfh.bfSize = 0x276;
-                        outputBitmap.bmfh.bfReserved1 = 0x0;
-                        outputBitmap.bmfh.bfReserved2 = 0x0;
-                        outputBitmap.bmfh.bfOffBits = 0x76;
+                            iconEntry.bWidth = 0x20;
+                            iconEntry.bHeight = 0x20;
+                            iconEntry.bColorCount = 0x10;
+                            iconEntry.bRsvd = 0x0;
+                            iconEntry.wPlanes = 0x0;
+                            iconEntry.wBitCount = 0x00;
+                            iconEntry.dwSize = 0x2E8;
+                            iconEntry.dwOffset = 0x16;
 
-                        outputBitmap.bmih.biSize = 0x28;
-                        outputBitmap.bmih.biWidth = 0x20;
-                        outputBitmap.bmih.biHeight = 0x20;
-                        outputBitmap.bmih.biPlanes = 0x1;
-                        outputBitmap.bmih.biBitCount = 0x4;
-                        outputBitmap.bmih.biCompression = 0x0;
-                        outputBitmap.bmih.biSizeImage = 0x200;
-                        outputBitmap.bmih.biXPelsPerMeter = 0xEC4;
-                        outputBitmap.bmih.biYPelsPerMeter = 0xEC4;
-                        outputBitmap.bmih.biClrUsed = 0x0;
-                        outputBitmap.bmih.biClrImportant = 0x0;
+                            outputBitmap.bmih.biSize = 0x28;
+                            outputBitmap.bmih.biWidth = 0x20;
+                            outputBitmap.bmih.biHeight = 0x20*2;
+                            outputBitmap.bmih.biPlanes = 0x1;
+                            outputBitmap.bmih.biBitCount = 0x4;
+                            outputBitmap.bmih.biCompression = 0x0;
+                            outputBitmap.bmih.biSizeImage = 0x280; //0x80 larger
+                            outputBitmap.bmih.biXPelsPerMeter = 0x0;
+                            outputBitmap.bmih.biYPelsPerMeter = 0x0;
+                            outputBitmap.bmih.biClrUsed = 0x0;
+                            outputBitmap.bmih.biClrImportant = 0x0;
 
-                        outputBitmap.colorTable.dwColorTableSize = sizeof(colorTable16Colors);
-                        outputBitmap.colorTable.lpColorData = (BYTE huge*)colorTable16Colors;
+                            
+                            // color table should be at 0x3E
+                            outputBitmap.colorTable.dwColorTableSize = sizeof(colorTable16Colors);
+                            outputBitmap.colorTable.lpColorData = (BYTE huge *)colorTable16Colors;
 
-                        outputBitmap.lpDibBits = (BYTE huge *)GlobalAllocPtr(GMEM_MOVEABLE, outputBitmap.bmih.biSizeImage);
-                        if(outputBitmap.lpDibBits == NULL){
-                            MessageBox(NULL, "Unable to make output pointer", "Save As", MB_OK);
+                            // image bits should start at 0x7E, through 0x27D
+                            outputBitmap.lpDibBits = (BYTE huge *)GlobalAllocPtr(GMEM_MOVEABLE, outputBitmap.bmih.biSizeImage);
+                            if (outputBitmap.lpDibBits == NULL)
+                            {
+                                MessageBox(NULL, "Unable to make bit pointer", "Save Icon", MB_OK);
+                                return 0;
+                            }
+                            copy_canvas_to_img(outputBitmap.lpDibBits);
+
+                            // XOR masking should start at 0x28E
+                            build_image_mask_from_canvas(&imageMask);
+                            if (imageMask.lpImageMask == NULL)
+                            {
+                                MessageBox(NULL, "Unable to make mask pointer", "Save Icon", MB_OK);
+                                return 0;
+                            }
+
+                            WriteICOToFile(szFileName, outputIcon, iconEntry, outputBitmap, imageMask);
+                        }
+                        else
+                        {
+                            // BMP
+                            outputBitmap.bmfh.bfType = 0x4d42;
+                            outputBitmap.bmfh.bfSize = 0x276;
+                            outputBitmap.bmfh.bfReserved1 = 0x0;
+                            outputBitmap.bmfh.bfReserved2 = 0x0;
+                            outputBitmap.bmfh.bfOffBits = 0x76;
+
+                            outputBitmap.bmih.biSize = 0x28;
+                            outputBitmap.bmih.biWidth = 0x20;
+                            outputBitmap.bmih.biHeight = 0x20;
+                            outputBitmap.bmih.biPlanes = 0x1;
+                            outputBitmap.bmih.biBitCount = 0x4;
+                            outputBitmap.bmih.biCompression = 0x0;
+                            outputBitmap.bmih.biSizeImage = 0x200;
+                            outputBitmap.bmih.biXPelsPerMeter = 0xEC4;
+                            outputBitmap.bmih.biYPelsPerMeter = 0xEC4;
+                            outputBitmap.bmih.biClrUsed = 0x0;
+                            outputBitmap.bmih.biClrImportant = 0x0;
+
+                            outputBitmap.colorTable.dwColorTableSize = sizeof(colorTable16Colors);
+                            outputBitmap.colorTable.lpColorData = (BYTE huge *)colorTable16Colors;
+
+                            outputBitmap.lpDibBits = (BYTE huge *)GlobalAllocPtr(GMEM_MOVEABLE, outputBitmap.bmih.biSizeImage);
+                            if (outputBitmap.lpDibBits == NULL)
+                            {
+                                MessageBox(NULL, "Unable to make bit pointer", "Save BMP", MB_OK);
+                                return 0;
+                            }
+
+                            copy_canvas_to_img(outputBitmap.lpDibBits);
+                            WriteDIBBitmapToFile(szFileName, outputBitmap);
                         }
 
-                        copy_canvas_to_img(outputBitmap.lpDibBits);
-                        WriteDIBBitmapToFile(szFileName, outputBitmap);
-
-                       
                     }
                     return 0;
 
@@ -528,6 +584,11 @@ long FAR PASCAL _export WndProcMain(HWND hwnd, UINT message, UINT wParam, LONG l
             if (outputBitmap.lpDibBits != NULL)
             {
                 GlobalFreePtr(inputBitmap.lpDibBits);
+            }
+
+            if (imageMask.lpImageMask != NULL)
+            {
+                GlobalFreePtr(imageMask.lpImageMask);
             }
 
             PostQuitMessage(0);
