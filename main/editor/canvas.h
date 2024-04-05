@@ -20,8 +20,10 @@ static char szNameCanvas[] = "Canvas";
 #define CANVAS_HISTORY_LEN 16
 
 
-void FAR PASCAL _export copy_img_to_canvas(BYTE huge *lpImg, BYTE huge *addrStart, WORD width, WORD height);
-void FAR PASCAL _export copy_canvas_to_img(BYTE huge *lpImg);
+ReturnCode_e FAR PASCAL _export copy_bmp_to_canvas(BitmapFields_s bitmap);
+ReturnCode_e FAR PASCAL _export copy_icon_to_canvas(IconFields_s icon);
+
+ReturnCode_e FAR PASCAL _export copy_canvas_to_img(BYTE huge *lpImg);
 void FAR PASCAL _export build_image_mask_from_canvas(ImageMask_s* imageMask);
 
 

@@ -17,6 +17,9 @@ typedef struct {
     DWORD dwColorTableSize;
 } ColorTable_s;
 
+// hardcoding for now, since so much is assumed we have a 32x32 image
+#define ICON_MASK_SIZE 0x80
+
 typedef struct {
     BYTE far* lpImageMask;
     WORD wMaskSize;
@@ -54,6 +57,11 @@ typedef struct{
 
 typedef struct{
     ICONDIR_s idir;
+    ICONDIRENTRY_s iDirEntry; //only support one for now
+    BITMAPINFOHEADER bmih;
+    ColorTable_s colorTable;
+    BYTE huge* lpDibBits;
+    ImageMask_s imageMask;
 } IconFields_s;
 
 // Starting point for this file was showdib.c by Charles Petzold
@@ -80,10 +88,10 @@ BYTE huge* FAR PASCAL _export ReadDib (char * szFileName);
 void FAR PASCAL _export WriteDIBBitmapToFile (char * szFileName, BitmapFields_s bmpFields);
 void FAR PASCAL _export WriteICOToFile (char * szFileName, IconFields_s iconFields, ICONDIRENTRY_s iconEntry, BitmapFields_s bmpFields, ImageMask_s imageMask);
 
-void FAR PASCAL _export InspectBMP (HDC hdc, HBITMAP hBmp);
 
-void FAR PASCAL _export CreateDIBBitmapFromFile (char* szFileName, BitmapFields_s* bmpFields);
 
+ReturnCode_e FAR PASCAL _export LoadBMPFile (char* szFileName, BitmapFields_s* bmpFields);
+ReturnCode_e FAR PASCAL _export LoadIconFile (char* szFileName, IconFields_s* iconFields);
 
 
 

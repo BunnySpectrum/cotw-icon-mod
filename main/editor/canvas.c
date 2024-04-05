@@ -493,7 +493,7 @@ FLOOD_EXIT:
     return TRUE;
 }
 
-void FAR PASCAL _export copy_canvas_to_img(BYTE huge *lpImg){
+ReturnCode_e FAR PASCAL _export copy_canvas_to_img(BYTE huge *lpImg){
     int idx, idx2;
     BYTE shift, mask, row, col;
 
@@ -526,22 +526,24 @@ void FAR PASCAL _export copy_canvas_to_img(BYTE huge *lpImg){
             row--;
         }
     }
+
+    return RC_SUCCESS;
 }
 
-void FAR PASCAL _export copy_img_to_canvas(BYTE huge *lpImg, BYTE huge *addrStart, WORD width, WORD height)
+ReturnCode_e FAR PASCAL _export copy_bmp_to_canvas(BitmapFields_s bitmap)
 {
-    // BYTE huge *lpDibBits;
-    // short cxDib, cyDib;
+
     int idx, idx2;
     BYTE shift, mask, row, col;
 
-    // ReadDib section
-    if (lpImg == NULL)
+
+    if (bitmap.lpDibBits == NULL)
     {
-        MessageBox(NULL, "Null lpImg", "Canvas", MB_OK);
-        return;
+        MessageBox(NULL, "Null bitmap", "Canvas", MB_OK);
+        return RC_ERROR;
     }
-    // for (idx = PIXEL_COUNT-1; idx >= 0; idx--)
+
+
     row = CANVAS_DIM-1;
     col = 0;
     for (idx = 0; idx < PIXEL_COUNT; idx++)
@@ -558,9 +560,9 @@ void FAR PASCAL _export copy_img_to_canvas(BYTE huge *lpImg, BYTE huge *addrStar
             mask = 0xF0;   
         }
 
-        // Method 1
+
         idx2 = PIXEL_2D_2_1D(col, row);
-        pixelFrame[idx2] = (*(addrStart + idx / 2) & mask) >> shift;
+        pixelFrame[idx2] = (*(bitmap.lpDibBits + idx / 2) & mask) >> shift;
         if(col < CANVAS_DIM-1){
             col++;
         }else{
@@ -568,24 +570,61 @@ void FAR PASCAL _export copy_img_to_canvas(BYTE huge *lpImg, BYTE huge *addrStar
             row--;
         }
 
-        // Method 2
-        // idx2 = (PIXEL_COUNT - 1) - (31 - idx%32) - (idx/32)*32;
-        // pixelFrame[idx2] = (*(addrStart + idx / 2) & mask) >> shift;
+    }
+
+    return RC_SUCCESS;
+
+}
+
+ReturnCode_e FAR PASCAL _export copy_icon_to_canvas(IconFields_s icon)
+{
+
+    int idx, idx2;
+    BYTE shift, mask, row, col;
+
+
+    if (icon.lpDibBits == NULL)
+    {
+        MessageBox(NULL, "Null icon bits", "Canvas", MB_OK);
+        return RC_ERROR;
+    }
+
+
+    row = CANVAS_DIM-1;
+    col = 0;
+    for (idx = 0; idx < PIXEL_COUNT; idx++)
+    {
+
+        if (idx % 2 != 0)
+        {
+            shift = 0;
+            mask = 0x0F;
+        }
+        else
+        {
+            shift = 4;
+            mask = 0xF0;   
+        }
+
+
+        idx2 = PIXEL_2D_2_1D(col, row);
+        pixelFrame[idx2] = (*(icon.lpDibBits + idx / 2) & mask) >> shift;
+        if(col < CANVAS_DIM-1){
+            col++;
+        }else{
+            col = 0;
+            row--;
+        }
 
     }
 
-    // lpDibBits = GetDibBitsAddr(lpDib);
-    // cxDib = GetDibWidth(lpDib);
-    // cyDib = GetDibHeight(lpDib);
+    return RC_SUCCESS;
 
-    // SetStretchBltMode(hdc, COLORONCOLOR);
-
-    // StretchDIBits(hdc, 0, 0, CANVAS_DIM * cxBlock, CANVAS_DIM * cyBlock,
-    //               0, 0, width, height,
-    //               (LPSTR)addrStart,
-    //               (LPBITMAPINFO)lpDib,
-    //               DIB_RGB_COLORS, SRCCOPY);
 }
+
+
+
+
 
 void FAR PASCAL _export build_image_mask_from_canvas(ImageMask_s *imageMask)
 {

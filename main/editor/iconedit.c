@@ -173,6 +173,7 @@ long FAR PASCAL _export WndProcMain(HWND hwnd, UINT message, UINT wParam, LONG l
     static IconFields_s inputIcon, outputIcon;
     static ICONDIRENTRY_s iconEntry;
     static ImageMask_s imageMask;
+    int fileType;
 
     switch(message){
         case WM_CREATE:{
@@ -369,31 +370,58 @@ long FAR PASCAL _export WndProcMain(HWND hwnd, UINT message, UINT wParam, LONG l
                 {
                     if (GetOpenFileName(&ofn))
                     {
-                        if (inputBitmap.lpDibBits != NULL)
-                        {
-                            GlobalFreePtr(inputBitmap.lpDibBits);
-                            inputBitmap.lpDibBits = NULL;
-                        }
+                        
+                        fileType = get_file_ext(szFileName, ofn.nFileExtension);
+                        
+                        switch(fileType){
+                            case IMAGE_DIB: //no break on purpose
+                            case IMAGE_BMP:
+                                // MessageBox(hwnd, "BMP", szNameApp, MB_OK);
 
-                        if (inputBitmap.colorTable.lpColorData != NULL)
-                        {
-                            GlobalFreePtr(inputBitmap.colorTable.lpColorData);
-                            inputBitmap.colorTable.lpColorData = NULL;
-                        }
-
-
-
-                        // lpDib = ReadDib(szFileName);
-                        CreateDIBBitmapFromFile(szFileName, &inputBitmap);
-                        // lpDib = inputBitmap.lpDibBits;
-
-                        if (inputBitmap.lpDibBits == NULL)
-                        {
-                            MessageBox(hwnd, "Error reading image file", szNameApp,  MB_ICONEXCLAMATION | MB_OK);
-                        }else{
-                            copy_img_to_canvas(inputBitmap.lpDibBits, inputBitmap.lpDibBits, (WORD)inputBitmap.bmih.biWidth, (WORD)inputBitmap.bmih.biHeight);
+                                if(RC_SUCCESS != LoadBMPFile(szFileName, &inputBitmap)){
+                                    MessageBox(hwnd, "Unable to load BMP", szNameApp, MB_ICONEXCLAMATION | MB_OK);
+                                    return 0;
+                                }
+                                
+                                if(RC_SUCCESS != copy_bmp_to_canvas(inputBitmap)){
+                                    MessageBox(hwnd, "Unable to copy BMP to canvas", szNameApp, MB_ICONEXCLAMATION | MB_OK);
+                                    return 0;
+                                }
                             
+                                break;
+
+                            // case IMAGE_DIB:
+                            //     MessageBox(hwnd, "DIB", szNameApp, MB_OK);
+
+                            //     LoadBMP(szFileName, &inputBitmap);
+                            //     break;
+
+                            case IMAGE_ICO:
+                                // MessageBox(hwnd, "ICO", szNameApp, MB_OK);
+
+                                if(RC_SUCCESS != LoadIconFile(szFileName, &inputIcon)){
+                                    MessageBox(hwnd, "Unable to load icon", szNameApp, MB_ICONEXCLAMATION | MB_OK);
+                                    return 0;
+                                }
+                                
+                                if(RC_SUCCESS != copy_icon_to_canvas(inputIcon)){
+                                    MessageBox(hwnd, "Unable to copy icon to canvas", szNameApp, MB_ICONEXCLAMATION | MB_OK);
+                                    return 0;
+                                }
+
+
+                                break;
+
+                            default:
+                                MessageBox(hwnd, "Unsupported file", szNameApp, MB_OK);
+                                return 0;
+                                break;
+
                         }
+
+                       
+                            
+                        
 
                         InvalidateRect(hwnd, NULL, TRUE);
                     }
@@ -403,60 +431,11 @@ long FAR PASCAL _export WndProcMain(HWND hwnd, UINT message, UINT wParam, LONG l
                 case IDM_SAVEAS:
                     if (GetSaveFileName(&ofn))
                     {
-                        if (1 == 1)
-                        {
-                            // ICO file
-                            outputIcon.idir.wRsvd = 0;
-                            outputIcon.idir.wType = TYPE_ICON;
-                            outputIcon.idir.wIconCount = 1;
+                        fileType = get_file_ext(szFileName, ofn.nFileExtension);
 
-                            iconEntry.bWidth = 0x20;
-                            iconEntry.bHeight = 0x20;
-                            iconEntry.bColorCount = 0x10;
-                            iconEntry.bRsvd = 0x0;
-                            iconEntry.wPlanes = 0x0;
-                            iconEntry.wBitCount = 0x00;
-                            iconEntry.dwSize = 0x2E8;
-                            iconEntry.dwOffset = 0x16;
-
-                            outputBitmap.bmih.biSize = 0x28;
-                            outputBitmap.bmih.biWidth = 0x20;
-                            outputBitmap.bmih.biHeight = 0x20*2;
-                            outputBitmap.bmih.biPlanes = 0x1;
-                            outputBitmap.bmih.biBitCount = 0x4;
-                            outputBitmap.bmih.biCompression = 0x0;
-                            outputBitmap.bmih.biSizeImage = 0x280; //0x80 larger
-                            outputBitmap.bmih.biXPelsPerMeter = 0x0;
-                            outputBitmap.bmih.biYPelsPerMeter = 0x0;
-                            outputBitmap.bmih.biClrUsed = 0x0;
-                            outputBitmap.bmih.biClrImportant = 0x0;
-
-                            
-                            // color table should be at 0x3E
-                            outputBitmap.colorTable.dwColorTableSize = sizeof(colorTable16Colors);
-                            outputBitmap.colorTable.lpColorData = (BYTE huge *)colorTable16Colors;
-
-                            // image bits should start at 0x7E, through 0x27D
-                            outputBitmap.lpDibBits = (BYTE huge *)GlobalAllocPtr(GMEM_MOVEABLE, outputBitmap.bmih.biSizeImage);
-                            if (outputBitmap.lpDibBits == NULL)
-                            {
-                                MessageBox(NULL, "Unable to make bit pointer", "Save Icon", MB_OK);
-                                return 0;
-                            }
-                            copy_canvas_to_img(outputBitmap.lpDibBits);
-
-                            // XOR masking should start at 0x28E
-                            build_image_mask_from_canvas(&imageMask);
-                            if (imageMask.lpImageMask == NULL)
-                            {
-                                MessageBox(NULL, "Unable to make mask pointer", "Save Icon", MB_OK);
-                                return 0;
-                            }
-
-                            WriteICOToFile(szFileName, outputIcon, iconEntry, outputBitmap, imageMask);
-                        }
-                        else
-                        {
+                        switch(fileType){
+                        case IMAGE_DIB: // no break on purpose
+                        case IMAGE_BMP:
                             // BMP
                             outputBitmap.bmfh.bfType = 0x4d42;
                             outputBitmap.bmfh.bfSize = 0x276;
@@ -488,8 +467,67 @@ long FAR PASCAL _export WndProcMain(HWND hwnd, UINT message, UINT wParam, LONG l
 
                             copy_canvas_to_img(outputBitmap.lpDibBits);
                             WriteDIBBitmapToFile(szFileName, outputBitmap);
-                        }
 
+                            break;
+
+                        case IMAGE_ICO:
+
+                            // ICO file
+                            outputIcon.idir.wRsvd = 0;
+                            outputIcon.idir.wType = TYPE_ICON;
+                            outputIcon.idir.wIconCount = 1;
+
+                            iconEntry.bWidth = 0x20;
+                            iconEntry.bHeight = 0x20;
+                            iconEntry.bColorCount = 0x10;
+                            iconEntry.bRsvd = 0x0;
+                            iconEntry.wPlanes = 0x0;
+                            iconEntry.wBitCount = 0x00;
+                            iconEntry.dwSize = 0x2E8;
+                            iconEntry.dwOffset = 0x16;
+
+                            outputBitmap.bmih.biSize = 0x28;
+                            outputBitmap.bmih.biWidth = 0x20;
+                            outputBitmap.bmih.biHeight = 0x20 * 2;
+                            outputBitmap.bmih.biPlanes = 0x1;
+                            outputBitmap.bmih.biBitCount = 0x4;
+                            outputBitmap.bmih.biCompression = 0x0;
+                            outputBitmap.bmih.biSizeImage = 0x280; // 0x80 larger
+                            outputBitmap.bmih.biXPelsPerMeter = 0x0;
+                            outputBitmap.bmih.biYPelsPerMeter = 0x0;
+                            outputBitmap.bmih.biClrUsed = 0x0;
+                            outputBitmap.bmih.biClrImportant = 0x0;
+
+                            // color table should be at 0x3E
+                            outputBitmap.colorTable.dwColorTableSize = sizeof(colorTable16Colors);
+                            outputBitmap.colorTable.lpColorData = (BYTE huge *)colorTable16Colors;
+
+                            // image bits should start at 0x7E, through 0x27D
+                            outputBitmap.lpDibBits = (BYTE huge *)GlobalAllocPtr(GMEM_MOVEABLE, outputBitmap.bmih.biSizeImage);
+                            if (outputBitmap.lpDibBits == NULL)
+                            {
+                                MessageBox(NULL, "Unable to make bit pointer", "Save Icon", MB_OK);
+                                return 0;
+                            }
+                            copy_canvas_to_img(outputBitmap.lpDibBits);
+
+                            // XOR masking should start at 0x28E
+                            build_image_mask_from_canvas(&imageMask);
+                            if (imageMask.lpImageMask == NULL)
+                            {
+                                MessageBox(NULL, "Unable to make mask pointer", "Save Icon", MB_OK);
+                                return 0;
+                            }
+
+                            WriteICOToFile(szFileName, outputIcon, iconEntry, outputBitmap, imageMask);
+
+                            break;
+
+                        default:
+                            MessageBox(hwnd, "Unsupported file", szNameApp, MB_OK);
+                            return 0;
+                            break;
+                        }
                     }
                     return 0;
 

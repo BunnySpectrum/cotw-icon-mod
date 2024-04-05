@@ -20,9 +20,7 @@ RGBQUAD colorTable16Colors[16] = {
     {0xFF, 0xFF, 0xFF, 0x00},
 };
 
-void FAR PASCAL _export InspectBMP (HDC hdc, HBITMAP hBmp){
 
-}
 
 
 DWORD GetDibInfoHeaderSize(BYTE huge *lpDib)
@@ -176,14 +174,26 @@ BYTE huge* FAR PASCAL _export ReadDib(char *szFileName)
 }
 
 
-void FAR PASCAL _export CreateDIBBitmapFromFile (char* szFileName, BitmapFields_s* bmpFields){
+ReturnCode_e FAR PASCAL _export LoadBMPFile(char* szFileName, BitmapFields_s* bmpFields){
     // BITMAPFILEHEADER bmfh;
     BYTE huge *lpDib, huge *lpColorTable;
     DWORD dwDibSize, dwOffset, dwHeaderSize;
     int hFile;
     WORD wDibRead;
+    int rc = RC_ERROR;
 
-    bmpFields->lpDibBits = NULL;
+    if (bmpFields->lpDibBits != NULL)
+    {
+        GlobalFreePtr(bmpFields->lpDibBits);
+        bmpFields->lpDibBits = NULL;
+    }
+
+    if ((bmpFields->colorTable).lpColorData != NULL)
+    {
+        GlobalFreePtr((bmpFields->colorTable).lpColorData);
+        (bmpFields->colorTable).lpColorData = NULL;
+    }
+    
 
     //
     /* Open file and confirm it's a BMP*/
@@ -191,7 +201,7 @@ void FAR PASCAL _export CreateDIBBitmapFromFile (char* szFileName, BitmapFields_
     if (-1 == (hFile = _lopen(szFileName, OF_READ | OF_SHARE_DENY_WRITE)))
     {
         MessageBox(NULL, "Failed to open", "ReadDib", MB_OK);
-        return;
+        return RC_ERROR;
     }
 
     if (_lread(hFile, (LPSTR)&(bmpFields->bmfh), sizeof(BITMAPFILEHEADER)) != sizeof(BITMAPFILEHEADER))
@@ -274,12 +284,209 @@ void FAR PASCAL _export CreateDIBBitmapFromFile (char* szFileName, BitmapFields_
         dwOffset += wDibRead;
     }
     bmpFields->lpDibBits =  lpDib;
+    rc = RC_SUCCESS;
 
 CLEANUP:
     _lclose(hFile);
 
+    return rc;
     
 }
+
+ReturnCode_e FAR PASCAL _export LoadIconFile(char* szFileName, IconFields_s* iconFields){
+    // BITMAPFILEHEADER bmfh;
+    BYTE huge *lpDib, huge *lpColorTable;
+    BYTE far* lpMask;
+    DWORD dwDibSize, dwOffset, dwHeaderSize;
+    int hFile;
+    WORD wDibRead;
+    int rc = RC_ERROR;
+
+    if (iconFields->lpDibBits != NULL)
+    {
+        GlobalFreePtr(iconFields->lpDibBits);
+        iconFields->lpDibBits = NULL;
+    }
+
+    if ((iconFields->colorTable).lpColorData != NULL)
+    {
+        GlobalFreePtr((iconFields->colorTable).lpColorData);
+        (iconFields->colorTable).lpColorData = NULL;
+    }
+
+    if ((iconFields->imageMask).lpImageMask != NULL)
+    {
+        GlobalFreePtr((iconFields->imageMask).lpImageMask);
+        (iconFields->imageMask).lpImageMask = NULL;
+    }
+    
+
+    //
+    /* Open file and confirm it's an icon*/
+    //
+    if (-1 == (hFile = _lopen(szFileName, OF_READ | OF_SHARE_DENY_WRITE)))
+    {
+        MessageBox(NULL, "Failed to open", "LoadIcon", MB_OK);
+        return RC_ERROR;
+    }
+
+    // Read Icon Directory.
+    //  confirm is an icon (vs cursor) and there's only one entry
+    if (_lread(hFile, (LPSTR)&(iconFields->idir), sizeof(ICONDIR_s)) != sizeof(ICONDIR_s))
+    {
+        MessageBox(NULL, "Failed to read icon directory", "LoadIcon", MB_OK);
+        goto CLEANUP;
+    }
+
+    if ((iconFields->idir).wType != TYPE_ICON)
+    {
+        MessageBox(NULL, "Not a Icon", "LoadIcon", MB_OK);
+        goto CLEANUP;
+    }
+
+    if ((iconFields->idir).wIconCount != 1)
+    {
+        MessageBox(NULL, "Only single-entry ico files supported", "LoadIcon", MB_OK);
+        goto CLEANUP;
+    }
+
+    // Read in icon directory entry
+    if (_lread(hFile, (LPSTR)&(iconFields->iDirEntry), sizeof(ICONDIRENTRY_s)) != sizeof(ICONDIRENTRY_s))
+    {
+        MessageBox(NULL, "Failed to read icon dir entry", "LoadIcon", MB_OK);
+        goto CLEANUP;
+    }
+
+
+
+    // Read in bitmap info header
+
+    // Confirm size mathces the BITMAPINFOHEADER size
+    wDibRead = 4;
+    if (wDibRead != _lread(hFile, (LPSTR)(&dwHeaderSize), wDibRead))
+    {
+        MessageBox(NULL, "Unable to read dwHeaderSize", "LoadIcon", MB_OK);
+        goto CLEANUP;
+    }
+
+    if(sizeof(BITMAPINFOHEADER) != dwHeaderSize){
+        MessageBox(NULL, "Unsupported header size", "LoadIcon", MB_OK);
+        goto CLEANUP;
+    }
+    // Move back to start of bitmap info header
+    _llseek(hFile, sizeof(ICONDIR_s) + sizeof(ICONDIRENTRY_s) * ((iconFields->idir).wIconCount), 0);
+
+    wDibRead = (WORD)min(32768ul, dwHeaderSize);
+    if (wDibRead != _lread(hFile, (LPSTR)(&(iconFields->bmih)), wDibRead))
+    {
+        MessageBox(NULL, "Unable to read bitmap info header", "LoadIcon", MB_OK);
+        goto CLEANUP;
+    }
+
+    // Indirect calculation of color table size
+    // FIXME for other BMP formats, the color table consists of RGBTRIPLEs. These are not currently supported.
+    if((iconFields->bmih).biClrUsed == 0){
+        // calc by num of bits
+        (iconFields->colorTable).dwColorTableSize = sizeof(RGBQUAD) * (1 << (iconFields->bmih).biBitCount);
+    }else{
+        // bmih.biClrUsed has the number of entries
+        (iconFields->colorTable).dwColorTableSize = sizeof(RGBQUAD) * ((iconFields->bmih).biClrUsed);
+    }
+    
+    lpColorTable = (BYTE huge *)GlobalAllocPtr(GMEM_MOVEABLE, (iconFields->colorTable).dwColorTableSize);
+    if (lpColorTable == NULL)
+    {
+        MessageBox(NULL, "lpColorTable was null", "LoadIcon", MB_OK);
+        goto CLEANUP;
+    }
+
+    // Read color table
+    wDibRead = (WORD)((iconFields->colorTable).dwColorTableSize);
+    if (wDibRead != _lread(hFile, (LPSTR)(lpColorTable), wDibRead))
+    {
+        GlobalFreePtr(lpColorTable);
+        MessageBox(NULL, "Unable to read color table", "LoadIcon", MB_OK);
+        goto CLEANUP;
+    }
+    (iconFields->colorTable).lpColorData = lpColorTable;
+
+
+    // Read in image bits
+
+    // FIXME again assuming 1 directory entry
+    (iconFields->imageMask).wMaskSize = ((iconFields->iDirEntry).bWidth * (iconFields->iDirEntry).bHeight)/8;
+
+    if(ICON_MASK_SIZE != (iconFields->imageMask).wMaskSize){
+        // Double-check here since we only support 32x32 for now
+        GlobalFreePtr(lpColorTable);
+        MessageBox(NULL, "Error calculating icon mask", "LoadIcon", MB_OK);
+        goto CLEANUP;
+    }
+    
+    dwDibSize = (iconFields->bmih).biSizeImage - (iconFields->imageMask).wMaskSize;
+    lpDib = (BYTE huge *)GlobalAllocPtr(GMEM_MOVEABLE, dwDibSize);
+    if (lpDib == NULL)
+    {
+        GlobalFreePtr(lpColorTable);
+        MessageBox(NULL, "lpDib was null", "LoadIcon", MB_OK);
+        goto CLEANUP;
+    }
+
+    dwOffset = 0;
+    while (dwDibSize > 0)
+    {
+        wDibRead = (WORD)min(32768ul, dwDibSize);
+
+        if (wDibRead != _lread(hFile, (LPSTR)(lpDib + dwOffset), wDibRead))
+        {
+            GlobalFreePtr(lpDib);
+            GlobalFreePtr(lpColorTable);
+            MessageBox(NULL, "Error reading bits", "LoadIcon", MB_OK);
+            goto CLEANUP;
+        }
+
+        dwDibSize -= wDibRead;
+        dwOffset += wDibRead;
+    }
+    iconFields->lpDibBits = lpDib;
+
+
+
+    // Read in image mask
+    dwDibSize = (iconFields->imageMask).wMaskSize;
+    lpMask = (BYTE far *)GlobalAllocPtr(GMEM_MOVEABLE, dwDibSize);
+    if (lpMask == NULL)
+    {
+        GlobalFreePtr(lpDib);
+        GlobalFreePtr(lpColorTable);
+        MessageBox(NULL, "lpMask was null", "LoadIcon", MB_OK);
+        goto CLEANUP;
+    }
+
+    wDibRead = (WORD)((iconFields->imageMask).wMaskSize);
+    if (wDibRead != _lread(hFile, (LPSTR)(lpMask), wDibRead))
+    {
+        GlobalFreePtr(lpDib);
+        GlobalFreePtr(lpColorTable);
+        MessageBox(NULL, "Unable to read image mask", "LoadIcon", MB_OK);
+        goto CLEANUP;
+    }
+    (iconFields->imageMask).lpImageMask = lpMask;
+
+
+
+
+    rc = RC_SUCCESS;
+
+CLEANUP:
+    _lclose(hFile);
+
+    return rc;
+    
+}
+
+
+
 
 void FAR PASCAL _export WriteDIBBitmapToFile(char *szFileName, BitmapFields_s bmpFields)
 {
@@ -379,3 +586,4 @@ CLEANUP:
     _lclose(hFile);
     return;
 }
+

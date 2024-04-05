@@ -2,6 +2,7 @@
 #define _UTILS_H_
 
 #include <WINDOWS.H>
+#include <string.h>
 
 #ifndef WIN31  
 #include "windef.h"                     
@@ -13,6 +14,7 @@
 
 BOOL FAR PASCAL _export pixel_color_code_to_rgb(WORD code, COLORREF* color);
 void FAR PASCAL _export pixel_num_to_bitfield(int pixel, short* byteNum, short* byteOffset);
+
 
 
 // Color definitions
@@ -75,5 +77,19 @@ typedef enum PixelColorCode{
     PixelColorCodeInvert = 17
 } PixelColorCode_e;
 
+typedef enum{
+    IMAGE_OTHER = 0,
+    IMAGE_BMP,
+    IMAGE_DIB,
+    IMAGE_ICO
+} ImageFileType_e;
+
+ImageFileType_e FAR PASCAL _export get_file_ext(const char* szFileName, int nFileExt);
+
+
+typedef enum{
+    RC_ERROR = 0,
+    RC_SUCCESS
+} ReturnCode_e;
 
 #endif
