@@ -153,9 +153,9 @@ long FAR PASCAL _export WndProcMain(HWND hwnd, UINT message, UINT wParam, LONG l
     // For ReadDib
     static char szFileName[_MAX_PATH],
         szTitleName[_MAX_FNAME + _MAX_EXT];
-    static char *szFilter[] = {"Bitmap Files (*.BMP)", "*.bmp",
+    static char *szFilter[] = {"ICON Files (*.ICO)", "*.ico",
+                                "Bitmap Files (*.BMP)", "*.bmp",
                                "DIB Files (*.DIB)", "*.dib",
-                               "ICON Files (*.ICO)", "*.ico",
                                ""};
     
     static OPENFILENAME ofn;
@@ -217,7 +217,7 @@ long FAR PASCAL _export WndProcMain(HWND hwnd, UINT message, UINT wParam, LONG l
             ofn.nMaxFile = _MAX_PATH;
             ofn.lpstrFileTitle = szTitleName;
             ofn.nMaxFileTitle = _MAX_FNAME + _MAX_EXT;
-            ofn.lpstrDefExt = "bmp";
+            ofn.lpstrDefExt = "ico";
 
             return 0;
             }
@@ -465,7 +465,7 @@ long FAR PASCAL _export WndProcMain(HWND hwnd, UINT message, UINT wParam, LONG l
                                 return 0;
                             }
 
-                            copy_canvas_to_img(outputBitmap.lpDibBits);
+                            copy_canvas_to_img(outputBitmap.lpDibBits, IMAGE_BMP);
                             WriteDIBBitmapToFile(szFileName, outputBitmap);
 
                             break;
@@ -509,7 +509,7 @@ long FAR PASCAL _export WndProcMain(HWND hwnd, UINT message, UINT wParam, LONG l
                                 MessageBox(NULL, "Unable to make bit pointer", "Save Icon", MB_OK);
                                 return 0;
                             }
-                            copy_canvas_to_img(outputBitmap.lpDibBits);
+                            copy_canvas_to_img(outputBitmap.lpDibBits, IMAGE_ICO);
 
                             // XOR masking should start at 0x28E
                             build_image_mask_from_canvas(&imageMask);

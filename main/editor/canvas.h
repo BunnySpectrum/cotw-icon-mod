@@ -23,7 +23,7 @@ static char szNameCanvas[] = "Canvas";
 ReturnCode_e FAR PASCAL _export copy_bmp_to_canvas(BitmapFields_s bitmap);
 ReturnCode_e FAR PASCAL _export copy_icon_to_canvas(IconFields_s icon);
 
-ReturnCode_e FAR PASCAL _export copy_canvas_to_img(BYTE huge *lpImg);
+ReturnCode_e FAR PASCAL _export copy_canvas_to_img(BYTE huge *lpImg, ImageFileType_e fileType);
 void FAR PASCAL _export build_image_mask_from_canvas(ImageMask_s* imageMask);
 
 

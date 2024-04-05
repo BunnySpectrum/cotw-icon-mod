@@ -134,8 +134,16 @@ BYTE canvas_draw_brush(HDC *hdc, BYTE *pixelFrame, CanvasBrushArgs_s *args)
     oldColorCode = pixelFrame[args->pixel];
     pixelFrame[args->pixel] = (BYTE)(args->newColorCode);
 
-    pixel_color_code_to_rgb(args->newColorCode, &newColor);
-    hBrush = CreateSolidBrush(newColor);
+    if(args->newColorCode == PixelColorCodeTransparent){
+        hBrush = CreateHatchBrush(HS_FDIAGONAL, COLOR_GRAY);
+    }else if(args->newColorCode == PixelColorCodeInvert){
+        hBrush = CreateHatchBrush(HS_DIAGCROSS, COLOR_BLACK);
+    }else{
+        pixel_color_code_to_rgb(args->newColorCode, &newColor);
+        hBrush = CreateSolidBrush(newColor);
+    }
+
+    
 
     rect.left = (pixelCol * args->size) + 1;
     rect.top = (pixelRow * args->size) + 1;
@@ -493,9 +501,10 @@ FLOOD_EXIT:
     return TRUE;
 }
 
-ReturnCode_e FAR PASCAL _export copy_canvas_to_img(BYTE huge *lpImg){
+ReturnCode_e FAR PASCAL _export copy_canvas_to_img(BYTE huge *lpImg, ImageFileType_e fileType){
     int idx, idx2;
     BYTE shift, mask, row, col;
+    BYTE outData;
 
     row = CANVAS_DIM-1;
     col = 0;
@@ -515,9 +524,18 @@ ReturnCode_e FAR PASCAL _export copy_canvas_to_img(BYTE huge *lpImg){
         // index in pixelFrame to grab
         idx2 = PIXEL_2D_2_1D(col, row);
 
+        if(pixelFrame[idx2] == PixelColorCodeTransparent){
+            outData = fileType == IMAGE_BMP ? PixelColorCodeWhite : 0x0;
+        }else if(pixelFrame[idx2] == PixelColorCodeInvert){
+            outData = fileType == IMAGE_BMP ? PixelColorCodeSilver : 0xF;
+        }else{
+            outData = pixelFrame[idx2];
+        }
+
+
         //Clear the bits
         *(lpImg + idx / 2) &= ~mask;
-        *(lpImg + idx / 2) |= (pixelFrame[idx2] << shift);
+        *(lpImg + idx / 2) |= (outData << shift);
 
         if(col < CANVAS_DIM-1){
             col++;
@@ -581,6 +599,7 @@ ReturnCode_e FAR PASCAL _export copy_icon_to_canvas(IconFields_s icon)
 
     int idx, idx2;
     BYTE shift, mask, row, col;
+    BYTE iconPixel, iconMaskBit;
 
 
     if (icon.lpDibBits == NULL)
@@ -608,7 +627,17 @@ ReturnCode_e FAR PASCAL _export copy_icon_to_canvas(IconFields_s icon)
 
 
         idx2 = PIXEL_2D_2_1D(col, row);
-        pixelFrame[idx2] = (*(icon.lpDibBits + idx / 2) & mask) >> shift;
+        iconPixel = (*(icon.lpDibBits + idx / 2) & mask) >> shift;
+        iconMaskBit = (*(icon.imageMask.lpImageMask + idx/8) >> (7 - idx % 8)) & 0x1;
+
+        if(iconMaskBit == 0){
+            pixelFrame[idx2] = iconPixel;
+        }else{
+            pixelFrame[idx2] = iconPixel == 0x0 ? PixelColorCodeTransparent : PixelColorCodeInvert;
+        }
+
+        // pixelFrame[idx2] = iconPixel;
+        
         if(col < CANVAS_DIM-1){
             col++;
         }else{
@@ -649,21 +678,21 @@ void FAR PASCAL _export build_image_mask_from_canvas(ImageMask_s *imageMask)
         // index in pixelFrame to grab
         idx2 = PIXEL_2D_2_1D(col, row);
 
-        // switch(pixelFrame[idx2]){
-        //     case PixelColorCodeTransparent:
-        //         data = 1;
-        //         break;
-        //     case PixelColorCodeInvert:
-        //         data = 1;
-        //         break;
-        //     case PixelColorCodeWhite: //for now, assume white means transparent
-        //         data = 0;
-        //         break;
-        //     default:
-        //         data = 0;
-        //         break;
-        // }
-        data = 0;
+        switch(pixelFrame[idx2]){
+            case PixelColorCodeTransparent:
+                data = 1;
+                break;
+            case PixelColorCodeInvert:
+                data = 1;
+                break;
+            case PixelColorCodeWhite: //for now, assume white means transparent
+                data = 0;
+                break;
+            default:
+                data = 0;
+                break;
+        }
+        // data = 0;
         
         
         // Clear the bits
@@ -1075,25 +1104,31 @@ long FAR PASCAL _export WndProcCanvas(HWND hwnd, UINT message, UINT wParam, LONG
         }
 
         for(pixel=0; pixel<PIXEL_COUNT; pixel++){
-            x = pixel % 32;
-            y = pixel / 32;
+            CanvasBrushArgs_s args;
+            args.pixel = pixel;
+            args.size = cxBlock;
+            args.newColorCode = pixelFrame[pixel];
+            canvas_draw_brush(&hdc, pixelFrame, &args);
 
-            colorCode = pixelFrame[pixel];
+            // x = pixel % 32;
+            // y = pixel / 32;
 
-            if(FALSE == pixel_color_code_to_rgb(colorCode, &newColor)){
-                MessageBeep(1);
-                newColor = COLOR_BLACK; //TODO signal error w/ dialog box w/ option to quit
-            }
+            // colorCode = pixelFrame[pixel];
 
-            hBrush = CreateSolidBrush(newColor);
+            // if(FALSE == pixel_color_code_to_rgb(colorCode, &newColor)){
+            //     MessageBeep(1);
+            //     newColor = COLOR_BLACK; //TODO signal error w/ dialog box w/ option to quit
+            // }
 
-            rect.left = x*cxBlock + 1;
-            rect.top = y*cyBlock + 1;
-            rect.right = rect.left + cxBlock - 2 ;
-            rect.bottom = rect.top + cyBlock - 2;
+            // hBrush = CreateSolidBrush(newColor);
 
-            FillRect(hdc, &rect, hBrush);
-            DeleteObject(hBrush);
+            // rect.left = x*cxBlock + 1;
+            // rect.top = y*cyBlock + 1;
+            // rect.right = rect.left + cxBlock - 2 ;
+            // rect.bottom = rect.top + cyBlock - 2;
+
+            // FillRect(hdc, &rect, hBrush);
+            // DeleteObject(hBrush);
         }
 
         EndPaint(hwnd, &ps);
