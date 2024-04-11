@@ -10,7 +10,7 @@
 #include "iconedit.h"
 
 long FAR PASCAL _export WndProcColorBox(HWND, UINT, UINT, LONG);
-static char szNameColorBox[] = "Color";
+extern char szNameColorBox[];
 extern char* colorLabels[];
 
 // Get/SetWindowWord offsets

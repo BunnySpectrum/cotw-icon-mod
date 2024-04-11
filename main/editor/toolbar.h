@@ -8,7 +8,7 @@
 #endif 
 
 long FAR PASCAL _export WndProcToolbar(HWND, UINT, UINT, LONG);
-static char szNameToolbar[] = "Toolbar";
+extern char szNameToolbar[];
 
 #define TOOLBAR_ROWS 10
 #define TOOLBAR_COLS 2

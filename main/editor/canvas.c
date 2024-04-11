@@ -3,6 +3,7 @@
 
 CanvasHistoryEntry_s *canvasHistory[CANVAS_HISTORY_LEN];
 int canvasHistoryWriteIndex, canvasHistoryReadIndex;
+char szNameCanvas[] = "Canvas";
 
 static short pixW, pixH;
 static int callDepthCurrent, callDepthMax;
@@ -722,11 +723,11 @@ long FAR PASCAL _export WndProcCanvas(HWND hwnd, UINT message, UINT wParam, LONG
     int x, y, pixel, pixRow, pixCol;
     static HPEN hPen;
     static short xSel, ySel;
-    HBRUSH hBrush;
+    // HBRUSH hBrush;
     POINT lpPoint;
-    BYTE colorCode;
+    // BYTE colorCode;
     // WORD activeColorForeground;
-    COLORREF newColor;
+    // COLORREF newColor;
     
     static WORD drawState;
     static POINT ptPixelDraw1, ptPixelDraw2;

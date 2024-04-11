@@ -1,5 +1,6 @@
 #include "log.h"
 
+char szNameLog[] = "Log";
 
 void FAR PASCAL _export log_message(char* message){
 

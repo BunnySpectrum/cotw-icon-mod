@@ -1,22 +1,22 @@
-
 #include "colorbox.h"
 
 char* colorLabels[] = {"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15"};
+char szNameColorBox[] = "Color";
 
 long FAR PASCAL _export WndProcColorBox(HWND hwnd, UINT message, UINT wParam, LONG lParam){
     HDC hdc;
     PAINTSTRUCT ps;
-    RECT rect, clientRect;
+    RECT clientRect;
     static short cxBlock, cyBlock;
     short x, y;
-    short colorRow, colorCol;
+    // short colorRow, colorCol;
     int colorCode;
     HWND hwndParent;
-    HBRUSH hBrush;
-    COLORREF colorRef;
+    // HBRUSH hBrush;
+    // COLORREF colorRef;
     static WORD activeColorCode;
     static HWND hwndButton[COLORBOX_COLS * COLORBOX_ROWS];
-    char scratch;
+    // char scratch;
 
     switch(message){
         case WM_CREATE:
@@ -28,8 +28,8 @@ long FAR PASCAL _export WndProcColorBox(HWND hwnd, UINT message, UINT wParam, LO
                     hwndButton[x + y*COLORBOX_COLS] = CreateWindow("button", 
                                                                     colorLabels[colorCode], 
                                                                     WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
-                                                                    16*x, 20*y,
-                                                                    16, 20,
+                                                                    32*x, 20*y,
+                                                                    32, 20,
                                                                     hwnd, colorCode,
                                                                     ((LPCREATESTRUCT) lParam) -> hInstance, NULL);
                 }

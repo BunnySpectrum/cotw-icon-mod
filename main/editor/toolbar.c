@@ -1,6 +1,7 @@
 
 #include "toolbar.h"
 
+char szNameToolbar[] = "Toolbar";
 
 long FAR PASCAL _export WndProcToolbar(HWND hwnd, UINT message, UINT wParam, LONG lParam){
     HDC hdc;

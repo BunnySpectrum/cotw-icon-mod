@@ -16,7 +16,7 @@
 #include "image.h"
 
 long FAR PASCAL _export WndProcCanvas(HWND, UINT, UINT, LONG);
-static char szNameCanvas[] = "Canvas";
+extern char szNameCanvas[];
 #define CANVAS_HISTORY_LEN 16
 
 

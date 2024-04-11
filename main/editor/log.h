@@ -14,7 +14,7 @@
 long FAR PASCAL _export WndProcLog(HWND, UINT, UINT, LONG);
 void FAR PASCAL _export log_message(char* message);
 
-static char szNameLog[] = "Log";
+extern char szNameLog[];
 #define LOG_EXTRA_WORDS 0 
 static char szLogLines[10][80];
 static int logWriteIndex, logReadIndex;
