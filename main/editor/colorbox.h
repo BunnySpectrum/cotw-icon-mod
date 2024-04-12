@@ -8,6 +8,7 @@
 #endif 
 
 #include "iconedit.h"
+#include "utils.h"
 
 long FAR PASCAL _export WndProcColorBox(HWND, UINT, UINT, LONG);
 extern char szNameColorBox[];
@@ -22,6 +23,8 @@ typedef enum ColorBoxWindowWords{
 
 #define COLORBOX_COLS 8
 #define COLORBOX_ROWS 2
+
+#define COLOR_BTN_SIZE 4*cxChar
 
 
 #endif

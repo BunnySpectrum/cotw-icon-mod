@@ -6,30 +6,35 @@ char szNameColorBox[] = "Color";
 long FAR PASCAL _export WndProcColorBox(HWND hwnd, UINT message, UINT wParam, LONG lParam){
     HDC hdc;
     PAINTSTRUCT ps;
-    RECT clientRect;
-    static short cxBlock, cyBlock;
+    RECT clientRect, rect;
+    static short cxBlock, cyBlock, cxChar, cyChar;
     short x, y;
-    // short colorRow, colorCol;
+
     int colorCode;
     HWND hwndParent;
-    // HBRUSH hBrush;
-    // COLORREF colorRef;
+    HBRUSH hBrush;
+    COLORREF colorRef;
     static WORD activeColorCode;
     static HWND hwndButton[COLORBOX_COLS * COLORBOX_ROWS];
-    // char scratch;
+    LPDRAWITEMSTRUCT lpdis;
 
     switch(message){
         case WM_CREATE:
             SetWindowWord(hwnd, ColorBoxWordForeColor, PixelColorCodeBlack); 
-            SetWindowWord(hwnd, ColorBoxWordBackColor, PixelColorCodeWhite);     
+            SetWindowWord(hwnd, ColorBoxWordBackColor, PixelColorCodeWhite);  
+            activeColorCode = PixelColorCodeBlack;
+
+            cxChar = LOWORD(GetDialogBaseUnits());
+            cyChar = HIWORD(GetDialogBaseUnits());
+
             for(x=0; x<COLORBOX_COLS; x++){
                 for(y=0; y<COLORBOX_ROWS; y++){
                     colorCode = x + y*COLORBOX_COLS;
                     hwndButton[x + y*COLORBOX_COLS] = CreateWindow("button", 
-                                                                    colorLabels[colorCode], 
-                                                                    WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
-                                                                    32*x, 20*y,
-                                                                    32, 20,
+                                                                    "", 
+                                                                    WS_CHILD | WS_VISIBLE | BS_OWNERDRAW,
+                                                                    0, 0,
+                                                                    COLOR_BTN_SIZE, COLOR_BTN_SIZE,
                                                                     hwnd, colorCode,
                                                                     ((LPCREATESTRUCT) lParam) -> hInstance, NULL);
                 }
@@ -40,6 +45,12 @@ long FAR PASCAL _export WndProcColorBox(HWND hwnd, UINT message, UINT wParam, LO
         case WM_SIZE:
             cxBlock = LOWORD(lParam) / COLORBOX_COLS;
             cyBlock = HIWORD(lParam) / COLORBOX_ROWS;
+            for(x=0; x<COLORBOX_COLS; x++){
+                for(y=0; y<COLORBOX_ROWS; y++){
+                    colorCode = x + y*COLORBOX_COLS;
+                    MoveWindow(hwndButton[colorCode], cxBlock/4 + x*cxBlock, cxBlock/2 + y*cxBlock, cxBlock/2, cxBlock/2, TRUE);
+                }
+            }
             return 0;
 
         case WM_PAINT:{
@@ -49,32 +60,32 @@ long FAR PASCAL _export WndProcColorBox(HWND hwnd, UINT message, UINT wParam, LO
             // Outer border
             Rectangle(hdc, clientRect.left, clientRect.top, clientRect.right, clientRect.bottom);
 
-            // for(x=0; x<COLORBOX_COLS; x++){
-            //     for(y=0; y<COLORBOX_ROWS; y++){
+            for(x=0; x<COLORBOX_COLS; x++){
+                for(y=0; y<COLORBOX_ROWS; y++){
 
-            //         colorCode = x + y*COLORBOX_COLS;
-            //         pixel_color_code_to_rgb(colorCode, &colorRef);
-            //         hBrush = CreateSolidBrush(colorRef);
+                    colorCode = x + y*COLORBOX_COLS;
+                    pixel_color_code_to_rgb(colorCode, &colorRef);
+                    hBrush = CreateSolidBrush(colorRef);
 
-            //         rect.left = clientRect.left + x*cxBlock + 1;
-            //         rect.top  = clientRect.top + y*cyBlock + 1;
-            //         rect.right = clientRect.left + x*cxBlock + cxBlock - 2; 
-            //         rect.bottom = clientRect.top + y*cyBlock + cyBlock - 2;
-            //         FillRect(hdc, &rect, hBrush);
+                    rect.left = clientRect.left + x*cxBlock + 1;
+                    rect.top  = clientRect.top + y*cyBlock + 1;
+                    rect.right = clientRect.left + x*cxBlock + cxBlock - 2; 
+                    rect.bottom = clientRect.top + y*cyBlock + cyBlock - 2;
+                    // FillRect(hdc, &rect, hBrush);
 
-            //         if((WORD)colorCode == activeColorCode){
-            //             rect.left -= 1;
-            //             rect.top  -= 1;
-            //             rect.right += 1; 
-            //             rect.bottom += 1;
+                    if((WORD)colorCode == activeColorCode){
+                        rect.left -= 1;
+                        rect.top  -= 1;
+                        rect.right += 1; 
+                        rect.bottom += 1;
 
-            //             DrawFocusRect(hdc, &rect);
-            //         }
+                        DrawFocusRect(hdc, &rect);
+                    }
 
                     
-            //         DeleteObject(hBrush);
-            //     }
-            // }
+                    DeleteObject(hBrush);
+                }
+            }
 
             EndPaint(hwnd, &ps);
             return 0;
@@ -94,6 +105,39 @@ long FAR PASCAL _export WndProcColorBox(HWND hwnd, UINT message, UINT wParam, LO
 
             
 
+            return 0;
+        }
+
+        case WM_DRAWITEM:
+        {
+            HBRUSH hBrush;
+            COLORREF newColor;
+            short cx, cy;
+
+            lpdis = (LPDRAWITEMSTRUCT) lParam;
+            pixel_color_code_to_rgb(lpdis->CtlID, &newColor);
+
+            hBrush = CreateSolidBrush(newColor);
+            FillRect(lpdis->hDC, &lpdis->rcItem, hBrush);
+            FrameRect(lpdis->hDC, &lpdis->rcItem, GetStockObject(BLACK_BRUSH));
+
+            DeleteObject(hBrush);
+
+            if(lpdis->itemState & ODS_SELECTED){
+                InvertRect(lpdis->hDC, &lpdis->rcItem);
+            }
+
+            cx = lpdis->rcItem.right - lpdis->rcItem.left;
+            cy = lpdis->rcItem.bottom - lpdis->rcItem.top;
+
+            if(lpdis->CtlID == activeColorCode){
+                lpdis->rcItem.left += cx/8;
+                lpdis->rcItem.top += cy/8;
+                lpdis->rcItem.right -= cx/8;
+                lpdis->rcItem.bottom -= cy/8;
+
+                FrameRect(lpdis->hDC, &lpdis->rcItem, GetStockObject(BLACK_BRUSH));
+            }
             return 0;
         }
     }
