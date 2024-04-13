@@ -48,7 +48,10 @@ long FAR PASCAL _export WndProcColorBox(HWND hwnd, UINT message, UINT wParam, LO
             for(x=0; x<COLORBOX_COLS; x++){
                 for(y=0; y<COLORBOX_ROWS; y++){
                     colorCode = x + y*COLORBOX_COLS;
-                    MoveWindow(hwndButton[colorCode], cxBlock/4 + x*cxBlock, cxBlock/2 + y*cxBlock, cxBlock/2, cxBlock/2, TRUE);
+                    MoveWindow(hwndButton[colorCode], 
+                    x*cxBlock + 4, 
+                    y*cyBlock + 4, 
+                    cxBlock - 8, cyBlock - 8, TRUE);
                 }
             }
             return 0;
