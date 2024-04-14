@@ -68,7 +68,13 @@ long FAR PASCAL _export WndProcColorBox(HWND hwnd, UINT message, UINT wParam, LO
 
                     colorCode = x + y*COLORBOX_COLS;
                     pixel_color_code_to_rgb(colorCode, &colorRef);
-                    hBrush = CreateSolidBrush(colorRef);
+
+                    if((WORD)colorCode == activeColorCode){
+                        hBrush = CreateHatchBrush(HS_DIAGCROSS, colorRef);
+                    }else{
+                        hBrush = CreateSolidBrush(colorRef);
+                    }
+                    
 
                     rect.left = clientRect.left + x*cxBlock + 1;
                     rect.top  = clientRect.top + y*cyBlock + 1;
@@ -120,7 +126,17 @@ long FAR PASCAL _export WndProcColorBox(HWND hwnd, UINT message, UINT wParam, LO
             lpdis = (LPDRAWITEMSTRUCT) lParam;
             pixel_color_code_to_rgb(lpdis->CtlID, &newColor);
 
-            hBrush = CreateSolidBrush(newColor);
+            
+
+            if (lpdis->CtlID == activeColorCode)
+            {
+                hBrush = CreateHatchBrush(HS_DIAGCROSS, newColor);
+            }
+            else
+            {
+                hBrush = CreateSolidBrush(newColor);
+            }
+
             FillRect(lpdis->hDC, &lpdis->rcItem, hBrush);
             FrameRect(lpdis->hDC, &lpdis->rcItem, GetStockObject(BLACK_BRUSH));
 
