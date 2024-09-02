@@ -17,13 +17,14 @@ void FAR PASCAL _export log_message(char* message){
 // Much of the scroll text window code is from Charles Petzold's SYSMETS3.C (pg 79)
 long FAR PASCAL _export WndProcLog(HWND hwnd, UINT message, UINT wParam, LONG lParam){
     HDC hdc;
+    RECT clientRect;
     PAINTSTRUCT ps;
     static short cxChar, cxCaps, cyChar, cxClient, cyClient, nMaxWidth, nVscrollPos, nVscrollMax, nHscrollPos, nHscrollMax;
     short i, x, y, nVscrollInc, nHscrollInc;
     TEXTMETRIC tm;
 
     switch(message){
-        case WM_CREATE:
+        case WM_CREATE:{
             for (x=0; x<LOG_EXTRA_WORDS; x+=2){
                 SetWindowWord(hwnd, x, 0);
             }
@@ -42,9 +43,9 @@ long FAR PASCAL _export WndProcLog(HWND hwnd, UINT message, UINT wParam, LONG lP
 
             nMaxWidth = 80 * cxChar;
             // MessageBox(NULL, "Log create", "Log", MB_OK);
-            return 0;
+            return 0;}
 
-        case WM_SIZE:
+        case WM_SIZE:{
             cxClient = LOWORD(lParam);
             cyClient = HIWORD(lParam);
 
@@ -62,6 +63,7 @@ long FAR PASCAL _export WndProcLog(HWND hwnd, UINT message, UINT wParam, LONG lP
             
 
             return 0;
+    }
 
         case WM_VSCROLL:
             switch(wParam){
@@ -144,6 +146,10 @@ long FAR PASCAL _export WndProcLog(HWND hwnd, UINT message, UINT wParam, LONG lP
         case WM_PAINT:
             
             hdc = BeginPaint(hwnd, &ps);
+            GetClientRect(hwnd, &clientRect);   
+
+            // Outer border
+            Rectangle(hdc, clientRect.left, clientRect.top, clientRect.right, clientRect.bottom);
 
             for(i=logReadIndex; ((i%LOG_LINE_MAX)!=logWriteIndex) && ((i-logReadIndex + nVscrollPos) <  nVscrollMax); i++){
                 x = cxChar * (1-nHscrollPos);

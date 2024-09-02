@@ -45,13 +45,15 @@ long FAR PASCAL _export WndProcColorBox(HWND hwnd, UINT message, UINT wParam, LO
         case WM_SIZE:
             cxBlock = LOWORD(lParam) / COLORBOX_COLS;
             cyBlock = HIWORD(lParam) / COLORBOX_ROWS;
+
+            // Position the windows for the color pickers
             for(x=0; x<COLORBOX_COLS; x++){
                 for(y=0; y<COLORBOX_ROWS; y++){
                     colorCode = x + y*COLORBOX_COLS;
                     MoveWindow(hwndButton[colorCode], 
-                    x*cxBlock + 4, 
+                    x*cxBlock+1, 
                     y*cyBlock + 4, 
-                    cxBlock - 8, cyBlock - 8, TRUE);
+                    cxBlock-1, cyBlock - 8, TRUE);
                 }
             }
             return 0;

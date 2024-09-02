@@ -21,8 +21,8 @@ typedef enum ColorBoxWindowWords{
 } ColorBoxWindowWords_e;
 #define COLORBOX_EXTRA_WORDS 2 
 
-#define COLORBOX_COLS 8
-#define COLORBOX_ROWS 2
+#define COLORBOX_COLS 2
+#define COLORBOX_ROWS 8
 
 #define COLOR_BTN_SIZE 4*cxChar
 

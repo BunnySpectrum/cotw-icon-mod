@@ -106,11 +106,11 @@ int PASCAL WinMain(HANDLE hInstance, HANDLE hPrevInstance, LPSTR lpszCmdParam, i
     hwnd = CreateWindow(
         szNameApp,
         "Character Creator",
-        WS_OVERLAPPEDWINDOW,
-        CW_USEDEFAULT,
-        CW_USEDEFAULT,
-        CW_USEDEFAULT,
-        CW_USEDEFAULT,
+        WS_OVERLAPPEDWINDOW, // dwStyle
+        CW_USEDEFAULT, // x
+        CW_USEDEFAULT, // y
+        450, // width
+        450, // height
         NULL,
         NULL,
         hInstance,
@@ -226,7 +226,7 @@ long FAR PASCAL _export WndProcMain(HWND hwnd, UINT message, UINT wParam, LONG l
             cyBlock = HIWORD(lParam) / 6;
             canvasSize = min( ALIGN(4*cxBlock, 32), ALIGN(5*cyBlock, 32));
 
-            MoveWindow(hwndColorBox, 5*cxBlock, 0, cxBlock, cyBlock, TRUE);
+            MoveWindow(hwndColorBox, 5*cxBlock, 0, cxBlock, cyBlock*4, TRUE);
             MoveWindow(hwndToolbar, 0, 0, cxBlock, 3*cyBlock, TRUE);
             MoveWindow(hwndCanvas, 
                     cxBlock + max(0, (4*cxBlock - canvasSize)/2), 
@@ -348,12 +348,12 @@ long FAR PASCAL _export WndProcMain(HWND hwnd, UINT message, UINT wParam, LONG l
 
             Rectangle(hdc, rect.left, rect.top, rect.right, rect.bottom);
 
-            for(x=0; x<6; x++){
-                for(y=0; y<6; y++){
-                    Rectangle(hdc, rect.left + x*cxBlock, rect.top + y*cyBlock, 
-                                    rect.left + x*cxBlock +cxBlock, rect.top + y*cyBlock + cyBlock);
-                }
-            }
+            // for(x=0; x<6; x++){
+            //     for(y=0; y<6; y++){
+            //         Rectangle(hdc, rect.left + x*cxBlock, rect.top + y*cyBlock, 
+            //                         rect.left + x*cxBlock +cxBlock, rect.top + y*cyBlock + cyBlock);
+            //     }
+            // }
 
 
 
