@@ -50,6 +50,8 @@ typedef enum CanvasTool{
     CanvasToolLine,
     CanvasToolFlood,
     CanvasToolRect,
+    CanvasToolNull1,
+    CanvasToolNull2,
     CanvasToolErase,  
     CanvasToolRestore         
 } CanvasTool_e;

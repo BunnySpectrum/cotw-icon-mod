@@ -136,7 +136,7 @@ long FAR PASCAL _export WndProcMain(HWND hwnd, UINT message, UINT wParam, LONG l
     static short cxBlock, cyBlock;
     static short canvasSize;
     static short counter;
-    short x, y;
+    // short x, y;
     HDC hdc;
     PAINTSTRUCT ps;
     RECT rect;

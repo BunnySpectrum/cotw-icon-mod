@@ -6,75 +6,135 @@ char szNameToolbar[] = "Toolbar";
 long FAR PASCAL _export WndProcToolbar(HWND hwnd, UINT message, UINT wParam, LONG lParam){
     HDC hdc;
     PAINTSTRUCT ps;
-    RECT rect, rectText;
-    static short cxBlock, cyBlock;
-    short x, y, col, row;
+    RECT rect;
+    static short cxBlock, cyBlock, cxChar, cyChar;
+    short x, y;
     char cBuffer[16] ;
     short nLength ;
     static WORD selectedTool, activeTool;
     HWND hwndParent;
+    LPDRAWITEMSTRUCT lpdis;
+    static HWND hwndButton[TOOLBAR_COLS * TOOLBAR_ROWS];
 
     switch(message){
-        case WM_CREATE:
+        case WM_CREATE:{
             SetWindowWord(hwnd, ToolbarWordTool, ToolbarToolBrush);
             selectedTool = ToolbarToolBrush;  
             activeTool = selectedTool;   
-            return 0;
-        
-        case WM_SIZE:
-            cxBlock = LOWORD(lParam) / TOOLBAR_COLS;
-            cyBlock = HIWORD(lParam) / TOOLBAR_ROWS;
-            // MessageBox(NULL, "Toolbar created", "Tools", MB_OK);
-            return 0;
 
-        case WM_LBUTTONDOWN:{
-            x = LOWORD(lParam);
-            y = HIWORD(lParam);
+            cxChar = LOWORD(GetDialogBaseUnits());
+            cyChar = HIWORD(GetDialogBaseUnits());
 
-            col = x/cxBlock;
-            row = y/cyBlock;
-            selectedTool = col + row*TOOLBAR_COLS;
-
-            if( (col >= TOOLBAR_COLS) || (col < 0) || (row >= TOOLBAR_ROWS) || (row < 0)){
-                return 0;
+            for(x=0; x<TOOLBAR_COLS; x++){
+                for(y=0; y<TOOLBAR_ROWS; y++){
+                    WORD toolCode = min(x + y*TOOLBAR_COLS, ToolbarToolMAX);
+                    hwndButton[x + y*TOOLBAR_COLS] = CreateWindow("button", 
+                                                                    "", 
+                                                                    WS_CHILD | WS_VISIBLE | BS_OWNERDRAW,
+                                                                    0, 0,
+                                                                    cxBlock, cyBlock,
+                                                                    hwnd, toolCode,
+                                                                    ((LPCREATESTRUCT) lParam) -> hInstance, NULL);
+                }
             }
 
-            hwndParent = GetParent(hwnd);
 
-            // nLength = wsprintf(szBuffer, "ID %d, code %d, to %d", CHILD_ID_COLORBOX, activeColorCode, hwndParent);
-            // MessageBox(hwnd, szBuffer, "ColorBox", MB_OK);
 
-            SendMessage(hwndParent, WM_COMMAND, GetWindowWord(hwnd, GWW_ID), selectedTool);
-            // MessageBeep(1);
-            InvalidateRect(hwnd, NULL, FALSE);
 
             return 0;
         }
+        
+        case WM_SIZE:{
+            cxBlock = LOWORD(lParam) / TOOLBAR_COLS;
+            cyBlock = HIWORD(lParam) / TOOLBAR_ROWS;
+
+            // Position the windows for the tools
+            for(x=0; x<TOOLBAR_COLS; x++){
+                for(y=0; y<TOOLBAR_ROWS; y++){
+                    WORD toolCode = x + y*TOOLBAR_COLS;
+                    if(toolCode >= ToolbarToolMAX){
+                        continue;
+                    }
+                    MoveWindow(hwndButton[toolCode], 
+                    x*cxBlock, 
+                    y*cyBlock, 
+                    cxBlock-1, cyBlock - 1, TRUE);
+                }
+            }
+
+
+            return 0;
+        }
+
 
         case WM_PAINT:{
             hdc = BeginPaint(hwnd, &ps);
             GetClientRect(hwnd, &rect);   
 
+            // Outer border
             Rectangle(hdc, rect.left, rect.top, rect.right, rect.bottom);
 
+            EndPaint(hwnd, &ps);
+            return 0;
+        }
 
-            for(x=0; x<TOOLBAR_COLS; x++){
-                for(y=0; y<TOOLBAR_ROWS; y++){
-                    nLength = wsprintf (cBuffer, "%s", toolbarToolNames[min(x + y*TOOLBAR_COLS, ToolbarToolMAX)]);
+        case WM_COMMAND:
+        {
+            if (HIWORD(lParam) == BN_CLICKED)
+            {
+                selectedTool = wParam;
+                hwndParent = GetParent(hwnd);
 
-                    rectText.left = rect.left + x*cxBlock;
-                    rectText.top = rect.top + y*cyBlock;
-                    rectText.right = rect.left + x*cxBlock +cxBlock;
-                    rectText.bottom = rect.top + y*cyBlock + cyBlock;
-
-
-                    Rectangle(hdc, rectText.left, rectText.top, 
-                                    rectText.right, rectText.bottom);
-                    DrawText (hdc, cBuffer, -1, &rectText, DT_SINGLELINE | DT_VCENTER | DT_CENTER | DT_NOCLIP) ;
-                }
+                SendMessage(hwndParent, WM_COMMAND, GetWindowWord(hwnd, GWW_ID), selectedTool);
+                // MessageBeep(1);
+                InvalidateRect(hwnd, NULL, FALSE);
             }
 
-            EndPaint(hwnd, &ps);
+            
+
+            return 0;
+        }
+
+        case WM_DRAWITEM:
+        {
+            HBRUSH hBrush;
+            WORD tool;
+            short cx, cy;
+
+            lpdis = (LPDRAWITEMSTRUCT) lParam;
+            tool = lpdis->CtlID;
+            
+
+            if (tool == selectedTool)
+            {
+                hBrush = GetStockObject(GRAY_BRUSH);
+            }
+            else
+            {
+                hBrush = GetStockObject(BLACK_BRUSH);
+            }
+            nLength = wsprintf (cBuffer, "%s", toolbarToolNames[min(tool, ToolbarToolMAX)]);
+            DrawText (lpdis->hDC, cBuffer, -1, &lpdis->rcItem, DT_SINGLELINE | DT_VCENTER | DT_CENTER | DT_NOCLIP) ;
+     
+            FrameRect(lpdis->hDC, &lpdis->rcItem, hBrush);
+
+            DeleteObject(hBrush);
+
+            if(lpdis->itemState & ODS_SELECTED){
+                InvertRect(lpdis->hDC, &lpdis->rcItem);
+            }
+
+            cx = lpdis->rcItem.right - lpdis->rcItem.left;
+            cy = lpdis->rcItem.bottom - lpdis->rcItem.top;
+
+            if(tool == selectedTool){
+                lpdis->rcItem.left += 2;
+                lpdis->rcItem.top += 2;
+                lpdis->rcItem.right -= 2;
+                lpdis->rcItem.bottom -= 2;
+
+                FrameRect(lpdis->hDC, &lpdis->rcItem, GetStockObject(BLACK_BRUSH));
+            }
             return 0;
         }
         

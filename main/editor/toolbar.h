@@ -12,6 +12,7 @@ extern char szNameToolbar[];
 
 #define TOOLBAR_ROWS 10
 #define TOOLBAR_COLS 2
+#define TOOL_BTN_SIZE 4*cxChar
 
 // Get/SetWindowWord offsets
 typedef enum ToolbarWindowWords{
@@ -25,13 +26,13 @@ typedef enum ToolbarTool{
     ToolbarToolLine,
     ToolbarToolFlood,
     ToolbarToolRect,
-    ToolbarToolErase,  
-    ToolbarToolRestore,
     ToolbarToolUndo,
     ToolbarToolRedo,
+    ToolbarToolErase,  
+    // ToolbarToolRestore,
     ToolbarToolMAX,       
 } ToolbarTool_e;
 
-static const LPSTR toolbarToolNames[] = {"Brush", "Line", "Flood", "Rect", "Erase", "Restore", "Undo", "Redo", ""};
+static const LPSTR toolbarToolNames[] = {"Br", "L", "Fl", "R", "Un", "Re", "E"};
 
 #endif

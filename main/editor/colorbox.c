@@ -6,14 +6,14 @@ char szNameColorBox[] = "Color";
 long FAR PASCAL _export WndProcColorBox(HWND hwnd, UINT message, UINT wParam, LONG lParam){
     HDC hdc;
     PAINTSTRUCT ps;
-    RECT clientRect, rect;
+    RECT clientRect;
     static short cxBlock, cyBlock, cxChar, cyChar;
     short x, y;
 
     int colorCode;
     HWND hwndParent;
-    HBRUSH hBrush;
-    COLORREF colorRef;
+
+
     static WORD activeColorCode;
     static HWND hwndButton[COLORBOX_COLS * COLORBOX_ROWS];
     LPDRAWITEMSTRUCT lpdis;
@@ -42,7 +42,7 @@ long FAR PASCAL _export WndProcColorBox(HWND hwnd, UINT message, UINT wParam, LO
 
             return 0;
         
-        case WM_SIZE:
+        case WM_SIZE:{
             cxBlock = LOWORD(lParam) / COLORBOX_COLS;
             cyBlock = HIWORD(lParam) / COLORBOX_ROWS;
 
@@ -56,7 +56,7 @@ long FAR PASCAL _export WndProcColorBox(HWND hwnd, UINT message, UINT wParam, LO
                     cxBlock-1, cyBlock - 8, TRUE);
                 }
             }
-            return 0;
+            return 0;}
 
         case WM_PAINT:{
             hdc = BeginPaint(hwnd, &ps);
@@ -64,39 +64,6 @@ long FAR PASCAL _export WndProcColorBox(HWND hwnd, UINT message, UINT wParam, LO
 
             // Outer border
             Rectangle(hdc, clientRect.left, clientRect.top, clientRect.right, clientRect.bottom);
-
-            for(x=0; x<COLORBOX_COLS; x++){
-                for(y=0; y<COLORBOX_ROWS; y++){
-
-                    colorCode = x + y*COLORBOX_COLS;
-                    pixel_color_code_to_rgb(colorCode, &colorRef);
-
-                    if((WORD)colorCode == activeColorCode){
-                        hBrush = CreateHatchBrush(HS_DIAGCROSS, colorRef);
-                    }else{
-                        hBrush = CreateSolidBrush(colorRef);
-                    }
-                    
-
-                    rect.left = clientRect.left + x*cxBlock + 1;
-                    rect.top  = clientRect.top + y*cyBlock + 1;
-                    rect.right = clientRect.left + x*cxBlock + cxBlock - 2; 
-                    rect.bottom = clientRect.top + y*cyBlock + cyBlock - 2;
-                    // FillRect(hdc, &rect, hBrush);
-
-                    if((WORD)colorCode == activeColorCode){
-                        rect.left -= 1;
-                        rect.top  -= 1;
-                        rect.right += 1; 
-                        rect.bottom += 1;
-
-                        DrawFocusRect(hdc, &rect);
-                    }
-
-                    
-                    DeleteObject(hBrush);
-                }
-            }
 
             EndPaint(hwnd, &ps);
             return 0;
