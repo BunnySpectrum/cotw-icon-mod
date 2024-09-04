@@ -230,7 +230,7 @@ long FAR PASCAL _export WndProcMain(HWND hwnd, UINT message, UINT wParam, LONG l
             MoveWindow(hwndToolbar, 0, 0, cxBlock, 3*cyBlock, TRUE);
             MoveWindow(hwndCanvas, 
                     cxBlock + max(0, (4*cxBlock - canvasSize)/2), 
-                    max(0, (5*cyBlock - canvasSize)/2), 
+                    0, 
                     canvasSize, canvasSize, TRUE);
             MoveWindow(hwndLog, cxBlock, 5*cyBlock, 4*cxBlock, cyBlock, TRUE);
 

@@ -153,7 +153,7 @@ long FAR PASCAL _export WndProcLog(HWND hwnd, UINT message, UINT wParam, LONG lP
 
             for(i=logReadIndex; ((i%LOG_LINE_MAX)!=logWriteIndex) && ((i-logReadIndex + nVscrollPos) <  nVscrollMax); i++){
                 x = cxChar * (1-nHscrollPos);
-                y = cyChar * (1-nVscrollPos+i-logReadIndex);
+                y = cyChar * (nVscrollPos+i-logReadIndex) + 2;
 
                 TextOut(hdc, x, y, szLogLines[i%LOG_LINE_MAX], lstrlen(szLogLines[i%LOG_LINE_MAX]));
             }
