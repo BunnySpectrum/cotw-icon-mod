@@ -366,10 +366,12 @@ long FAR PASCAL _export WndProcMain(HWND hwnd, UINT message, UINT wParam, LONG l
 
             switch(wParam){
                 case IDM_NEW:
+                case IDM_OPEN_DUP:
                 case IDM_OPEN:
                 {
                     if (GetOpenFileName(&ofn))
                     {
+                        
                         
                         fileType = get_file_ext(szFileName, ofn.nFileExtension);
                         
@@ -419,10 +421,9 @@ long FAR PASCAL _export WndProcMain(HWND hwnd, UINT message, UINT wParam, LONG l
 
                         }
 
-                       
-                            
-                        
-
+                        if(wParam == IDM_OPEN_DUP){
+                            ofn.lpstrFile[0] = '\0';
+                        }
                         InvalidateRect(hwnd, NULL, TRUE);
                     }
                     return 0;

@@ -6,6 +6,7 @@ CHARCRTR MENU
     {
         MENUITEM "&New",            IDM_NEW
         MENUITEM "&Open...",        IDM_OPEN
+        MENUITEM "&Duplicate...",   IDM_OPEN_DUP
         MENUITEM "&Save",           IDM_SAVE
         MENUITEM "Save &As...",     IDM_SAVEAS
         MENUITEM SEPARATOR
