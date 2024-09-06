@@ -1,7 +1,33 @@
 
 #include "toolbar.h"
-
+extern HANDLE hInst;
 char szNameToolbar[] = "Toolbar";
+
+
+void DrawBitmapT(HDC hdc, HBITMAP hBitmap, short xStart, short yStart){
+    BITMAP bm;
+    HDC hdcMem;
+    POINT ptSize, ptOrg;
+
+    hdcMem = CreateCompatibleDC(hdc);
+    SelectObject(hdcMem, hBitmap);
+    SetMapMode(hdcMem, GetMapMode(hdc));
+
+    GetObject(hBitmap, sizeof(BITMAP), (LPSTR)&bm);
+    ptSize.x = bm.bmWidth;
+    ptSize.y = bm.bmHeight;
+    DPtoLP(hdc, &ptSize, 1);
+
+    ptOrg.x = 0;
+    ptOrg.y = 0;
+    DPtoLP(hdcMem, &ptOrg, 1);
+
+    BitBlt(hdc, xStart, yStart, ptSize.x, ptSize.y, hdcMem, ptOrg.x, ptOrg.y, SRCCOPY);
+
+    DeleteDC(hdcMem);
+}
+
+
 
 long FAR PASCAL _export WndProcToolbar(HWND hwnd, UINT message, UINT wParam, LONG lParam){
     HDC hdc;
@@ -104,6 +130,7 @@ long FAR PASCAL _export WndProcToolbar(HWND hwnd, UINT message, UINT wParam, LON
             lpdis = (LPDRAWITEMSTRUCT) lParam;
             tool = lpdis->CtlID;
             
+            
 
             if (tool == selectedTool)
             {
@@ -114,7 +141,14 @@ long FAR PASCAL _export WndProcToolbar(HWND hwnd, UINT message, UINT wParam, LON
                 hBrush = GetStockObject(BLACK_BRUSH);
             }
             nLength = wsprintf (cBuffer, "%s", toolbarToolNames[min(tool, ToolbarToolMAX)]);
-            DrawText (lpdis->hDC, cBuffer, -1, &lpdis->rcItem, DT_SINGLELINE | DT_VCENTER | DT_CENTER | DT_NOCLIP) ;
+            if(tool == ToolbarToolBrush){
+                HBITMAP hBrushImg = LoadBitmap(hInst, "RCBRUSH");
+                DrawBitmapT(hdc, hBrushImg, lpdis->rcItem.left, lpdis->rcItem.top); 
+                
+            }else{
+                DrawText (lpdis->hDC, cBuffer, -1, &lpdis->rcItem, DT_SINGLELINE | DT_VCENTER | DT_CENTER | DT_NOCLIP) ;
+
+            }
      
             FrameRect(lpdis->hDC, &lpdis->rcItem, hBrush);
 

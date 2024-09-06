@@ -48,17 +48,41 @@ BOOL map_toolbar_tool_to_canvas(CanvasTool_e* canvasTool, ToolbarTool_e toolbarT
 }                        
 
 
+void DrawBitmap(HDC hdc, HBITMAP hBitmap, short xStart, short yStart){
+    BITMAP bm;
+    HDC hdcMem;
+    POINT ptSize, ptOrg;
+
+    hdcMem = CreateCompatibleDC(hdc);
+    SelectObject(hdcMem, hBitmap);
+    SetMapMode(hdcMem, GetMapMode(hdc));
+
+    GetObject(hBitmap, sizeof(BITMAP), (LPSTR)&bm);
+    ptSize.x = bm.bmWidth;
+    ptSize.y = bm.bmHeight;
+    DPtoLP(hdc, &ptSize, 1);
+
+    ptOrg.x = 0;
+    ptOrg.y = 0;
+    DPtoLP(hdcMem, &ptOrg, 1);
+
+    BitBlt(hdc, xStart, yStart, ptSize.x, ptSize.y, hdcMem, ptOrg.x, ptOrg.y, SRCCOPY);
+
+    DeleteDC(hdcMem);
+}
 
 
 
-
-
+HANDLE hInst;
 
 
 int PASCAL WinMain(HANDLE hInstance, HANDLE hPrevInstance, LPSTR lpszCmdParam, int nCmdShow){
     HWND hwnd;
     MSG msg;
     WNDCLASS wndclass;
+    // HBITMAP hBitmapBrush;
+
+    // hBitmapBrush = LoadBitmap(hInstance, "RCBRUSH");
 
     if(!hPrevInstance){
         // Main window 
@@ -102,6 +126,7 @@ int PASCAL WinMain(HANDLE hInstance, HANDLE hPrevInstance, LPSTR lpszCmdParam, i
         wndclass.lpszClassName = szNameLog;
         RegisterClass(&wndclass);
     }
+    hInst = hInstance;
 
     hwnd = CreateWindow(
         szNameApp,
@@ -124,6 +149,8 @@ int PASCAL WinMain(HANDLE hInstance, HANDLE hPrevInstance, LPSTR lpszCmdParam, i
         TranslateMessage(&msg);
         DispatchMessage(&msg);
     }
+
+    // DeleteObject(hBitmapBrush);
     return msg.wParam;
 }
 
@@ -175,8 +202,11 @@ long FAR PASCAL _export WndProcMain(HWND hwnd, UINT message, UINT wParam, LONG l
     static ImageMask_s imageMask;
     int fileType;
 
+    static HBITMAP hBrushImg;
+
     switch(message){
         case WM_CREATE:{
+            hBrushImg = LoadBitmap(hInst, "RCBRUSH");
             counter = 0;
             hdc = GetDC(hwnd);
             GetTextMetrics(hdc, &tm);
@@ -226,13 +256,13 @@ long FAR PASCAL _export WndProcMain(HWND hwnd, UINT message, UINT wParam, LONG l
             cyBlock = HIWORD(lParam) / 6;
             canvasSize = min( ALIGN(4*cxBlock, 32), ALIGN(5*cyBlock, 32));
 
-            MoveWindow(hwndColorBox, 5*cxBlock, 0, cxBlock, cyBlock*4, TRUE);
-            MoveWindow(hwndToolbar, 0, 0, cxBlock, 3*cyBlock, TRUE);
+            MoveWindow(hwndColorBox, 5*cxBlock, 0+cyBlock, cxBlock, cyBlock*4, TRUE);
+            MoveWindow(hwndToolbar, 0, 0+cyBlock, cxBlock, 3*cyBlock, TRUE);
             MoveWindow(hwndCanvas, 
                     cxBlock + max(0, (4*cxBlock - canvasSize)/2), 
-                    0, 
+                    0+cyBlock, 
                     canvasSize, canvasSize, TRUE);
-            MoveWindow(hwndLog, cxBlock, 5*cyBlock, 4*cxBlock, cyBlock, TRUE);
+            MoveWindow(hwndLog, cxBlock, 5*cyBlock + cyBlock, 4*cxBlock, cyBlock, TRUE);
 
             lpMousePoint.x = cxBlock;
             lpMousePoint.y = 0;
@@ -347,6 +377,7 @@ long FAR PASCAL _export WndProcMain(HWND hwnd, UINT message, UINT wParam, LONG l
             GetClientRect(hwnd, &rect);   
 
             Rectangle(hdc, rect.left, rect.top, rect.right, rect.bottom);
+            DrawBitmap(hdc, hBrushImg, 0, 0);
 
             // for(x=0; x<6; x++){
             //     for(y=0; y<6; y++){

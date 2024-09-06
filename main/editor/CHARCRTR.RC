@@ -1,5 +1,7 @@
 #include "cmd.h"
 
+RCBRUSH BITMAP brush.bmp
+
 CHARCRTR MENU
 {
     POPUP "&File"
