@@ -1,5 +1,6 @@
 
 #include "toolbar.h"
+
 extern HANDLE hInst;
 char szNameToolbar[] = "Toolbar";
 
@@ -71,8 +72,12 @@ long FAR PASCAL _export WndProcToolbar(HWND hwnd, UINT message, UINT wParam, LON
         }
         
         case WM_SIZE:{
+            short cSideLength;
             cxBlock = LOWORD(lParam) / TOOLBAR_COLS;
             cyBlock = HIWORD(lParam) / TOOLBAR_ROWS;
+
+            // cSideLength = min(cxBlock, cyBlock);
+            cSideLength = cxBlock;
 
             // Position the windows for the tools
             for(x=0; x<TOOLBAR_COLS; x++){
@@ -82,9 +87,9 @@ long FAR PASCAL _export WndProcToolbar(HWND hwnd, UINT message, UINT wParam, LON
                         continue;
                     }
                     MoveWindow(hwndButton[toolCode], 
-                    x*cxBlock, 
-                    y*cyBlock, 
-                    cxBlock-1, cyBlock - 1, TRUE);
+                    x*cSideLength, 
+                    y*cSideLength, 
+                    cSideLength - 1, cSideLength - 1, TRUE);
                 }
             }
 
@@ -141,6 +146,7 @@ long FAR PASCAL _export WndProcToolbar(HWND hwnd, UINT message, UINT wParam, LON
                 hBrush = GetStockObject(BLACK_BRUSH);
             }
             nLength = wsprintf (cBuffer, "%s", toolbarToolNames[min(tool, ToolbarToolMAX)]);
+            
             if(tool == ToolbarToolBrush){
                 HBITMAP hBrushImg = LoadBitmap(hInst, "RCBRUSH");
                 DrawBitmapT(hdc, hBrushImg, lpdis->rcItem.left, lpdis->rcItem.top); 
