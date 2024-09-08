@@ -1,6 +1,9 @@
 #include "cmd.h"
 
-RCBRUSH BITMAP brush.bmp
+RCBRUSH BITMAP ./img/brush.bmp
+RCLINE BITMAP ./img/line.bmp
+RCRAISED BITMAP ./img/raised.bmp
+RCSUNKEN BITMAP ./img/sunken.bmp
 
 CHARCRTR MENU
 {

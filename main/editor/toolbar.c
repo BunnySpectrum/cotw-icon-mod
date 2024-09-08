@@ -146,17 +146,38 @@ long FAR PASCAL _export WndProcToolbar(HWND hwnd, UINT message, UINT wParam, LON
                 hBrush = GetStockObject(BLACK_BRUSH);
             }
             nLength = wsprintf (cBuffer, "%s", toolbarToolNames[min(tool, ToolbarToolMAX)]);
-            
-            if(tool == ToolbarToolBrush){
-                HBITMAP hBrushImg = LoadBitmap(hInst, "RCBRUSH");
-                DrawBitmapT(hdc, hBrushImg, lpdis->rcItem.left, lpdis->rcItem.top); 
-                
+
+            if(tool == selectedTool){
+                HBITMAP hImg = LoadBitmap(hInst, "RCSUNKEN");
+                lpdis->rcItem.left += 2;
+                lpdis->rcItem.top += 2;
+                lpdis->rcItem.right -= 2;
+                lpdis->rcItem.bottom -= 2;
+
+                // FrameRect(lpdis->hDC, &lpdis->rcItem, GetStockObject(BLACK_BRUSH));
+                DrawBitmapT(hdc, hImg, lpdis->rcItem.left, lpdis->rcItem.top); 
             }else{
-                DrawText (lpdis->hDC, cBuffer, -1, &lpdis->rcItem, DT_SINGLELINE | DT_VCENTER | DT_CENTER | DT_NOCLIP) ;
+                HBITMAP hImg = LoadBitmap(hInst, "RCRAISED");
+                DrawBitmapT(hdc, hImg, lpdis->rcItem.left, lpdis->rcItem.top); 
 
             }
+
+            switch(tool){
+                case ToolbarToolBrush:{
+                    HBITMAP hImg = LoadBitmap(hInst, "RCBRUSH");
+                    DrawBitmapT(hdc, hImg, lpdis->rcItem.left + 2, lpdis->rcItem.top + 2); 
+                    break;
+                }
+                case ToolbarToolLine:{
+                    HBITMAP hImg = LoadBitmap(hInst, "RCLINE");
+                    DrawBitmapT(hdc, hImg, lpdis->rcItem.left + 2, lpdis->rcItem.top + 2); 
+                    break;
+                }
+                default:
+                    DrawText (lpdis->hDC, cBuffer, -1, &lpdis->rcItem, DT_SINGLELINE | DT_VCENTER | DT_CENTER | DT_NOCLIP) ;
+            }
      
-            FrameRect(lpdis->hDC, &lpdis->rcItem, hBrush);
+            // FrameRect(lpdis->hDC, &lpdis->rcItem, hBrush);
 
             DeleteObject(hBrush);
 
@@ -164,17 +185,10 @@ long FAR PASCAL _export WndProcToolbar(HWND hwnd, UINT message, UINT wParam, LON
                 InvertRect(lpdis->hDC, &lpdis->rcItem);
             }
 
-            cx = lpdis->rcItem.right - lpdis->rcItem.left;
-            cy = lpdis->rcItem.bottom - lpdis->rcItem.top;
 
-            if(tool == selectedTool){
-                lpdis->rcItem.left += 2;
-                lpdis->rcItem.top += 2;
-                lpdis->rcItem.right -= 2;
-                lpdis->rcItem.bottom -= 2;
 
-                FrameRect(lpdis->hDC, &lpdis->rcItem, GetStockObject(BLACK_BRUSH));
-            }
+
+
             return 0;
         }
         
