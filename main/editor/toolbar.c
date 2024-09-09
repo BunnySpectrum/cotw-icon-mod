@@ -5,6 +5,31 @@ extern HANDLE hInst;
 char szNameToolbar[] = "Toolbar";
 
 
+void DrawBitmapFit(HDC hdc, HBITMAP hBitmap, short xStart, short yStart, short xEnd, short yEnd){
+    BITMAP bm;
+    HDC hdcMem;
+    POINT ptSize, ptOrg;
+
+    hdcMem = CreateCompatibleDC(hdc);
+    SelectObject(hdcMem, hBitmap);
+    // SetMapMode(hdcMem, GetMapMode(hdc));
+
+    GetObject(hBitmap, sizeof(BITMAP), (LPSTR)&bm);
+    ptSize.x = bm.bmWidth;
+    ptSize.y = bm.bmHeight;
+    // DPtoLP(hdc, &ptSize, 1);
+
+    ptOrg.x = 0;
+    ptOrg.y = 0;
+    // DPtoLP(hdcMem, &ptOrg, 1);
+
+    // SetStretchBltMode(hdc, COLORONCOLOR);
+    StretchBlt(hdc, xStart, yStart, xEnd - xStart, yEnd - yStart, 
+        hdcMem, ptOrg.x, ptOrg.y, ptSize.x, ptSize.y, SRCCOPY);
+
+    DeleteDC(hdcMem);
+}
+
 void DrawBitmapT(HDC hdc, HBITMAP hBitmap, short xStart, short yStart){
     BITMAP bm;
     HDC hdcMem;
@@ -149,28 +174,39 @@ long FAR PASCAL _export WndProcToolbar(HWND hwnd, UINT message, UINT wParam, LON
 
             if(tool == selectedTool){
                 HBITMAP hImg = LoadBitmap(hInst, "RCSUNKEN");
-                lpdis->rcItem.left += 2;
-                lpdis->rcItem.top += 2;
-                lpdis->rcItem.right -= 2;
-                lpdis->rcItem.bottom -= 2;
+                DrawBitmapFit(hdc, hImg, 
+                    lpdis->rcItem.left, 
+                    lpdis->rcItem.top,
+                    lpdis->rcItem.right, 
+                    lpdis->rcItem.bottom); 
 
-                // FrameRect(lpdis->hDC, &lpdis->rcItem, GetStockObject(BLACK_BRUSH));
-                DrawBitmapT(hdc, hImg, lpdis->rcItem.left, lpdis->rcItem.top); 
             }else{
                 HBITMAP hImg = LoadBitmap(hInst, "RCRAISED");
-                DrawBitmapT(hdc, hImg, lpdis->rcItem.left, lpdis->rcItem.top); 
+                DrawBitmapFit(hdc, hImg, 
+                    lpdis->rcItem.left, 
+                    lpdis->rcItem.top,
+                    lpdis->rcItem.right, 
+                    lpdis->rcItem.bottom); 
 
             }
 
             switch(tool){
                 case ToolbarToolBrush:{
                     HBITMAP hImg = LoadBitmap(hInst, "RCBRUSH");
-                    DrawBitmapT(hdc, hImg, lpdis->rcItem.left + 2, lpdis->rcItem.top + 2); 
+                    // DrawBitmapFit(hdc, hImg, 
+                    //     lpdis->rcItem.left + 2, 
+                    //     lpdis->rcItem.top + 2,
+                    //     lpdis->rcItem.right - 2, 
+                    //     lpdis->rcItem.bottom - 2); 
                     break;
                 }
                 case ToolbarToolLine:{
                     HBITMAP hImg = LoadBitmap(hInst, "RCLINE");
-                    DrawBitmapT(hdc, hImg, lpdis->rcItem.left + 2, lpdis->rcItem.top + 2); 
+                    // DrawBitmapFit(hdc, hImg, 
+                    //     lpdis->rcItem.left + 2, 
+                    //     lpdis->rcItem.top + 2,
+                    //     lpdis->rcItem.right - 2, 
+                    //     lpdis->rcItem.bottom - 2); 
                     break;
                 }
                 default:
