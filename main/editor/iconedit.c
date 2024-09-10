@@ -270,7 +270,7 @@ long FAR PASCAL _export WndProcMain(HWND hwnd, UINT message, UINT wParam, LONG l
 
             SetCursorPos(lpMousePoint.x, lpMousePoint.y);
 
-            // nLength = wsprintf(szBuffer, "Handle %d", hwnd);
+            // nLength = wsprintf(szBuffer, "IconEdit hInst %d", hInst);
             // MessageBox(hwnd, szBuffer, "Main", MB_OK);
 
             //ReadDib section

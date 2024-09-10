@@ -3,40 +3,25 @@
 
 extern HANDLE hInst;
 char szNameToolbar[] = "Toolbar";
+// static char szBuffer[80];
 
 
-void DrawBitmapFit(HDC hdc, HBITMAP hBitmap, short xStart, short yStart, short xEnd, short yEnd){
+
+void DrawBitmapT(HDC hdc, HBITMAP hBitmap, short xStart, short yStart, short xEnd, short yEnd){
     BITMAP bm;
+    HBITMAP hOld;
     HDC hdcMem;
     POINT ptSize, ptOrg;
+    int width, height;
+
+    width = xEnd - xStart;
+    height = yEnd - yStart;
+    if(!hdc){
+        MessageBeep(1);
+    }
 
     hdcMem = CreateCompatibleDC(hdc);
-    SelectObject(hdcMem, hBitmap);
-    // SetMapMode(hdcMem, GetMapMode(hdc));
-
-    GetObject(hBitmap, sizeof(BITMAP), (LPSTR)&bm);
-    ptSize.x = bm.bmWidth;
-    ptSize.y = bm.bmHeight;
-    // DPtoLP(hdc, &ptSize, 1);
-
-    ptOrg.x = 0;
-    ptOrg.y = 0;
-    // DPtoLP(hdcMem, &ptOrg, 1);
-
-    // SetStretchBltMode(hdc, COLORONCOLOR);
-    StretchBlt(hdc, xStart, yStart, xEnd - xStart, yEnd - yStart, 
-        hdcMem, ptOrg.x, ptOrg.y, ptSize.x, ptSize.y, SRCCOPY);
-
-    DeleteDC(hdcMem);
-}
-
-void DrawBitmapT(HDC hdc, HBITMAP hBitmap, short xStart, short yStart){
-    BITMAP bm;
-    HDC hdcMem;
-    POINT ptSize, ptOrg;
-
-    hdcMem = CreateCompatibleDC(hdc);
-    SelectObject(hdcMem, hBitmap);
+    hOld = SelectObject(hdcMem, hBitmap);
     SetMapMode(hdcMem, GetMapMode(hdc));
 
     GetObject(hBitmap, sizeof(BITMAP), (LPSTR)&bm);
@@ -48,8 +33,11 @@ void DrawBitmapT(HDC hdc, HBITMAP hBitmap, short xStart, short yStart){
     ptOrg.y = 0;
     DPtoLP(hdcMem, &ptOrg, 1);
 
-    BitBlt(hdc, xStart, yStart, ptSize.x, ptSize.y, hdcMem, ptOrg.x, ptOrg.y, SRCCOPY);
+    // BitBlt(hdc, xStart, yStart, ptSize.x, ptSize.y, hdcMem, ptOrg.x, ptOrg.y, SRCCOPY);
+    // StretchBlt(hdc, xStart, yStart, ptSize.x, ptSize.y, hdcMem, ptOrg.x, ptOrg.y, bm.bmWidth, bm.bmHeight, SRCCOPY);
+    StretchBlt(hdc, xStart, yStart, width, height, hdcMem, ptOrg.x, ptOrg.y, bm.bmWidth, bm.bmHeight, SRCCOPY);
 
+    SelectObject(hdcMem, hOld);
     DeleteDC(hdcMem);
 }
 
@@ -100,6 +88,9 @@ long FAR PASCAL _export WndProcToolbar(HWND hwnd, UINT message, UINT wParam, LON
             short cSideLength;
             cxBlock = LOWORD(lParam) / TOOLBAR_COLS;
             cyBlock = HIWORD(lParam) / TOOLBAR_ROWS;
+
+            // nLength = wsprintf(szBuffer, "Toolbox hInst %d", hInst);
+            // MessageBox(hwnd, szBuffer, "Main", MB_OK);
 
             // cSideLength = min(cxBlock, cyBlock);
             cSideLength = cxBlock;
@@ -155,10 +146,12 @@ long FAR PASCAL _export WndProcToolbar(HWND hwnd, UINT message, UINT wParam, LON
         {
             HBRUSH hBrush;
             WORD tool;
+            HDC hdc;
             short cx, cy;
 
             lpdis = (LPDRAWITEMSTRUCT) lParam;
             tool = lpdis->CtlID;
+            hdc = lpdis->hDC;
             
             
 
@@ -173,40 +166,58 @@ long FAR PASCAL _export WndProcToolbar(HWND hwnd, UINT message, UINT wParam, LON
             nLength = wsprintf (cBuffer, "%s", toolbarToolNames[min(tool, ToolbarToolMAX)]);
 
             if(tool == selectedTool){
-                HBITMAP hImg = LoadBitmap(hInst, "RCSUNKEN");
-                DrawBitmapFit(hdc, hImg, 
+                HBITMAP hImg = LoadBitmap(GetModuleHandle(NULL), "RCSUNKEN");
+                // HBITMAP hImg = LoadBitmap(hInst, "RCSUNKEN");
+                // DrawBitmapT(hdc, hImg, 
+                //     lpdis->rcItem.left, 
+                //     lpdis->rcItem.top);
+                DrawBitmapT(hdc, hImg, 
                     lpdis->rcItem.left, 
                     lpdis->rcItem.top,
                     lpdis->rcItem.right, 
                     lpdis->rcItem.bottom); 
+                    DeleteObject(hImg);
 
             }else{
-                HBITMAP hImg = LoadBitmap(hInst, "RCRAISED");
-                DrawBitmapFit(hdc, hImg, 
+                HBITMAP hImg = LoadBitmap(GetModuleHandle(NULL), "RCRAISED");
+                // HBITMAP hImg = LoadBitmap(hInst, "RCRAISED");
+                // DrawBitmapT(hdc, hImg, 
+                //     lpdis->rcItem.left, 
+                //     lpdis->rcItem.top);
+                DrawBitmapT(hdc, hImg, 
                     lpdis->rcItem.left, 
                     lpdis->rcItem.top,
                     lpdis->rcItem.right, 
                     lpdis->rcItem.bottom); 
+                    DeleteObject(hImg);
 
             }
 
             switch(tool){
                 case ToolbarToolBrush:{
                     HBITMAP hImg = LoadBitmap(hInst, "RCBRUSH");
-                    // DrawBitmapFit(hdc, hImg, 
-                    //     lpdis->rcItem.left + 2, 
-                    //     lpdis->rcItem.top + 2,
-                    //     lpdis->rcItem.right - 2, 
-                    //     lpdis->rcItem.bottom - 2); 
+                // DrawBitmapT(hdc, hImg, 
+                //     lpdis->rcItem.left, 
+                //     lpdis->rcItem.top);
+                    DrawBitmapT(hdc, hImg, 
+                        lpdis->rcItem.left + 2, 
+                        lpdis->rcItem.top + 2,
+                        lpdis->rcItem.right - 2, 
+                        lpdis->rcItem.bottom - 2); 
+                    DeleteObject(hImg);
                     break;
                 }
                 case ToolbarToolLine:{
                     HBITMAP hImg = LoadBitmap(hInst, "RCLINE");
-                    // DrawBitmapFit(hdc, hImg, 
-                    //     lpdis->rcItem.left + 2, 
-                    //     lpdis->rcItem.top + 2,
-                    //     lpdis->rcItem.right - 2, 
-                    //     lpdis->rcItem.bottom - 2); 
+                // DrawBitmapT(hdc, hImg, 
+                //     lpdis->rcItem.left, 
+                //     lpdis->rcItem.top);
+                    DrawBitmapT(hdc, hImg, 
+                        lpdis->rcItem.left + 2, 
+                        lpdis->rcItem.top + 2,
+                        lpdis->rcItem.right - 2, 
+                        lpdis->rcItem.bottom - 2); 
+                    DeleteObject(hImg);
                     break;
                 }
                 default:
