@@ -166,8 +166,8 @@ long FAR PASCAL _export WndProcToolbar(HWND hwnd, UINT message, UINT wParam, LON
             nLength = wsprintf (cBuffer, "%s", toolbarToolNames[min(tool, ToolbarToolMAX)]);
 
             if(tool == selectedTool){
-                HBITMAP hImg = LoadBitmap(GetModuleHandle(NULL), "RCSUNKEN");
-                // HBITMAP hImg = LoadBitmap(hInst, "RCSUNKEN");
+                // HBITMAP hImg = LoadBitmap(GetModuleHandle(NULL), "RCSUNKEN");
+                HBITMAP hImg = LoadBitmap(hInst, "RCSUNKEN");
                 // DrawBitmapT(hdc, hImg, 
                 //     lpdis->rcItem.left, 
                 //     lpdis->rcItem.top);
@@ -179,8 +179,8 @@ long FAR PASCAL _export WndProcToolbar(HWND hwnd, UINT message, UINT wParam, LON
                     DeleteObject(hImg);
 
             }else{
-                HBITMAP hImg = LoadBitmap(GetModuleHandle(NULL), "RCRAISED");
-                // HBITMAP hImg = LoadBitmap(hInst, "RCRAISED");
+                // HBITMAP hImg = LoadBitmap(GetModuleHandle(NULL), "RCRAISED");
+                HBITMAP hImg = LoadBitmap(hInst, "RCRAISED");
                 // DrawBitmapT(hdc, hImg, 
                 //     lpdis->rcItem.left, 
                 //     lpdis->rcItem.top);
@@ -224,7 +224,7 @@ long FAR PASCAL _export WndProcToolbar(HWND hwnd, UINT message, UINT wParam, LON
                     DrawText (lpdis->hDC, cBuffer, -1, &lpdis->rcItem, DT_SINGLELINE | DT_VCENTER | DT_CENTER | DT_NOCLIP) ;
             }
      
-            // FrameRect(lpdis->hDC, &lpdis->rcItem, hBrush);
+            FrameRect(lpdis->hDC, &lpdis->rcItem, hBrush);
 
             DeleteObject(hBrush);
 
