@@ -13,6 +13,7 @@
 long FAR PASCAL _export WndProcColorBox(HWND, UINT, UINT, LONG);
 extern char szNameColorBox[];
 extern char* colorLabels[];
+static const LPSTR colorboxNames[] = {"T", "I"};
 
 // Get/SetWindowWord offsets
 typedef enum ColorBoxWindowWords{
@@ -22,7 +23,7 @@ typedef enum ColorBoxWindowWords{
 #define COLORBOX_EXTRA_WORDS 2 
 
 #define COLORBOX_COLS 2
-#define COLORBOX_ROWS 8
+#define COLORBOX_ROWS 9
 
 #define COLOR_BTN_SIZE 4*cxChar
 

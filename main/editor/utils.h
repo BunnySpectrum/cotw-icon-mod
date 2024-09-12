@@ -44,7 +44,8 @@ void FAR PASCAL _export pixel_num_to_bitfield(int pixel, short* byteNum, short* 
 
 
 static COLORREF pixelColorList[] = {COLOR_BLACK, COLOR_MAROON, COLOR_GREEN, COLOR_OLIVE, COLOR_NAVY, COLOR_PURPLE, COLOR_TEAL, COLOR_SILVER,
-                            COLOR_GRAY, COLOR_RED, COLOR_LIME, COLOR_YELLOW, COLOR_BLUE, COLOR_FUCHIA, COLOR_AQUA, COLOR_WHITE};
+                            COLOR_GRAY, COLOR_RED, COLOR_LIME, COLOR_YELLOW, COLOR_BLUE, COLOR_FUCHIA, COLOR_AQUA, COLOR_WHITE,
+                            COLOR_WHITE, COLOR_WHITE};
 
 
 

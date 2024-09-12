@@ -1,6 +1,6 @@
 #include "colorbox.h"
 
-char* colorLabels[] = {"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15"};
+char* colorLabels[] = {"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17"};
 char szNameColorBox[] = "Color";
 
 long FAR PASCAL _export WndProcColorBox(HWND hwnd, UINT message, UINT wParam, LONG lParam){
@@ -12,6 +12,7 @@ long FAR PASCAL _export WndProcColorBox(HWND hwnd, UINT message, UINT wParam, LO
 
     int colorCode;
     HWND hwndParent;
+    char cBuffer[16];
 
 
     static WORD activeColorCode;
@@ -91,6 +92,7 @@ long FAR PASCAL _export WndProcColorBox(HWND hwnd, UINT message, UINT wParam, LO
             HBRUSH hBrush;
             COLORREF newColor;
             short cx, cy;
+            short nLength;
 
             lpdis = (LPDRAWITEMSTRUCT) lParam;
             pixel_color_code_to_rgb(lpdis->CtlID, &newColor);
@@ -107,6 +109,18 @@ long FAR PASCAL _export WndProcColorBox(HWND hwnd, UINT message, UINT wParam, LO
             }
 
             FillRect(lpdis->hDC, &lpdis->rcItem, hBrush);
+            switch(lpdis->CtlID){
+                case 16:
+                    nLength = wsprintf(cBuffer, "%s", colorboxNames[0]);
+                    DrawText (lpdis->hDC, cBuffer, -1, &lpdis->rcItem, DT_SINGLELINE | DT_VCENTER | DT_CENTER | DT_NOCLIP) ;
+                    break;
+                case 17:
+                    nLength = wsprintf(cBuffer, "%s", colorboxNames[1]);
+                    DrawText (lpdis->hDC, cBuffer, -1, &lpdis->rcItem, DT_SINGLELINE | DT_VCENTER | DT_CENTER | DT_NOCLIP) ;
+                    break;
+                default:
+                    break;
+            }
             FrameRect(lpdis->hDC, &lpdis->rcItem, GetStockObject(BLACK_BRUSH));
 
             DeleteObject(hBrush);
