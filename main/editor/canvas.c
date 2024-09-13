@@ -128,6 +128,7 @@ BYTE canvas_draw_brush(HDC *hdc, BYTE *pixelFrame, CanvasBrushArgs_s *args)
     RECT rect;
     short pixelCol, pixelRow;
     BYTE oldColorCode;
+    POINT pt;
 
     pixelCol = PIXEL_1D_2_COL(args->pixel);
     pixelRow = PIXEL_1D_2_ROW(args->pixel);
@@ -135,21 +136,25 @@ BYTE canvas_draw_brush(HDC *hdc, BYTE *pixelFrame, CanvasBrushArgs_s *args)
     oldColorCode = pixelFrame[args->pixel];
     pixelFrame[args->pixel] = (BYTE)(args->newColorCode);
 
-    if(args->newColorCode == PixelColorCodeTransparent){
-        hBrush = CreateHatchBrush(HS_FDIAGONAL, COLOR_GRAY);
-    }else if(args->newColorCode == PixelColorCodeInvert){
-        hBrush = CreateHatchBrush(HS_DIAGCROSS, COLOR_BLACK);
-    }else{
-        pixel_color_code_to_rgb(args->newColorCode, &newColor);
-        hBrush = CreateSolidBrush(newColor);
-    }
-
-    
-
     rect.left = (pixelCol * args->size) + 1;
     rect.top = (pixelRow * args->size) + 1;
     rect.right = rect.left + args->size - 2;
     rect.bottom = rect.top + args->size - 2;
+
+    pt.x = rect.left;
+    pt.y = rect.top;
+    SetBrushOrg(*hdc, pt.x, pt.y);
+
+    if(args->newColorCode == PixelColorCodeTransparent){
+        hBrush = CreateHatchBrush(HS_FDIAGONAL, COLOR_GRAY);
+
+    }else if(args->newColorCode == PixelColorCodeInvert){
+        hBrush = CreateHatchBrush(HS_DIAGCROSS, COLOR_GRAY);
+
+    }else{
+        pixel_color_code_to_rgb(args->newColorCode, &newColor);
+        hBrush = CreateSolidBrush(newColor);
+    }
 
     FillRect(*hdc, &rect, hBrush);
     DeleteObject(hBrush);
