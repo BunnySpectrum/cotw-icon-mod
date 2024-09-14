@@ -3,6 +3,7 @@
 
 // This header contains only the minimal defines so intellisense can make sense of the win3.1 code
 #define FAR  
+#define far
 #define PASCAL  
 #define _export
 #define huge
