@@ -17,8 +17,8 @@ int save_file(OPENFILENAME* pofn, char* pFileName,
     IconFields_s* pOutputIcon, ICONDIRENTRY_s* pIconEntry, ImageMask_s* pImageMask){
     int fileType;
 
-    if (GetSaveFileName(pofn))
-    {
+    // if (GetSaveFileName(pofn))
+    // {
         fileType = get_file_ext(pFileName, pofn->nFileExtension);
 
         switch(fileType){
@@ -118,7 +118,7 @@ int save_file(OPENFILENAME* pofn, char* pFileName,
                 break;
             }
         }
-    }
+    // }
 }
 
 static char szBuffer[80];
@@ -355,6 +355,8 @@ long FAR PASCAL _export WndProcMain(HWND hwnd, UINT message, UINT wParam, LONG l
             ofn.lpstrFileTitle = szTitleName;
             ofn.nMaxFileTitle = _MAX_FNAME + _MAX_EXT;
             ofn.lpstrDefExt = "ico";
+            szFileName[0] = '\0';
+            szTitleName[0] = '\0';
 
             return 0;
             }
@@ -566,10 +568,27 @@ long FAR PASCAL _export WndProcMain(HWND hwnd, UINT message, UINT wParam, LONG l
                     }
                     return 0;
                 }
-                case IDM_SAVE:
-                case IDM_SAVEAS:
+                case IDM_SAVE:{
+                    if(strlen(szFileName) == 0){//using ofn.lpstrFile has near/far mismatch
+                        // MessageBox(NULL, "No file yet", MB_OK, 1);
+                        if (!GetSaveFileName(&ofn)){
+                            // MessageBox(NULL, "No file provided.", MB_OK, 0);
+                            return 0;
+                        }
+                    }
+
+                    // nLength = wsprintf (szBuffer, "File: %s.", ofn.lpstrFile);
+                    // MessageBox(NULL, szBuffer, MB_OK, 0);
                     save_file(&ofn, szFileName, &outputBitmap,
+                    &outputIcon, &iconEntry, &imageMask);
+                    return 0;
+                }
+                case IDM_SAVEAS:
+                    if (GetSaveFileName(&ofn)){
+                        save_file(&ofn, szFileName, &outputBitmap,
                         &outputIcon, &iconEntry, &imageMask);
+                    }
+                    
                     return 0;
 
                 case IDM_EXIT:
