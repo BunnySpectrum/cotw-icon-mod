@@ -613,6 +613,10 @@ long FAR PASCAL _export WndProcMain(HWND hwnd, UINT message, UINT wParam, LONG l
                     InvalidateRect(hwnd, NULL, TRUE);
                     return 0;
                 }
+                case IDM_EXP_TEST:{
+                    MessageBox(hwnd, "Not yet implemented.", szNameApp, MB_ICONEXCLAMATION | MB_OK);
+                    return 0;
+                }
 
                 case IDM_HELP:
                     MessageBox(hwnd, "Help not yet implemented.", szNameApp, MB_ICONEXCLAMATION | MB_OK);

@@ -25,6 +25,10 @@ CHARCRTR MENU
         MENUITEM "&Dk Gray"         IDM_DKGRAY
         MENUITEM "&Black"           IDM_BLACK
     }
+    POPUP "&Export"
+    {
+        MENUITEM "&Test",           IDM_EXP_TEST
+    }
     POPUP "&Help"
     {
         MENUITEM "&Help",          IDM_HELP

@@ -17,7 +17,8 @@
 #define IDM_GRAY 14
 #define IDM_DKGRAY 15
 #define IDM_BLACK 16
-#define IDM_HELP 17
+#define IDM_EXP_TEST 17
+#define IDM_HELP 18
 #define IDM_ABOUT 19
 #define IDM_OPEN_DUP 20
 
