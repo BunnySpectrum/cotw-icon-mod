@@ -11,6 +11,7 @@
 #include "log.h"
 #include "utils.h"
 #include "image.h"
+#include "patch.h"
 
 int save_file(OPENFILENAME* pofn, char* pFileName, 
     BitmapFields_s* pOutputBitmap, 
@@ -310,6 +311,7 @@ long FAR PASCAL _export WndProcMain(HWND hwnd, UINT message, UINT wParam, LONG l
     int fileType;
 
     static HBITMAP hBrushImg;
+    static int patch_test = 0;
 
     switch(message){
         case WM_CREATE:{
@@ -379,8 +381,9 @@ long FAR PASCAL _export WndProcMain(HWND hwnd, UINT message, UINT wParam, LONG l
 
             SetCursorPos(lpMousePoint.x, lpMousePoint.y);
 
-            // nLength = wsprintf(szBuffer, "IconEdit hInst %d", hInst);
-            // MessageBox(hwnd, szBuffer, "Main", MB_OK);
+            test_run(&patch_test);
+            nLength = wsprintf(szBuffer, "Test = %d", patch_test);
+            MessageBox(hwnd, szBuffer, "Main", MB_OK);
 
             //ReadDib section
             xClient = cxBlock + max(0, (4*cxBlock - canvasSize)/2);
