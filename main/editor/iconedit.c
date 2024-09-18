@@ -299,6 +299,14 @@ long FAR PASCAL _export WndProcMain(HWND hwnd, UINT message, UINT wParam, LONG l
     // static WORD wDisplay = IDM_ACTUAL;
     // BYTE huge *lpDibBits;
     // short cxDib, cyDib;
+    
+    // For EXE patch
+    static char szExeName[_MAX_PATH],
+        szExeTitle[_MAX_FNAME + _MAX_EXT];
+    static char *szFilterExe[] = {"EXE Files (*.EXE)", "*.exe",
+                               ""};
+    
+    static OPENFILENAME ofnExe;
 
     // Menudemo (Petzold, ch 9, pg 349)
     static int wColorID[5] = {WHITE_BRUSH, LTGRAY_BRUSH, GRAY_BRUSH, DKGRAY_BRUSH, BLACK_BRUSH};
@@ -348,7 +356,7 @@ long FAR PASCAL _export WndProcMain(HWND hwnd, UINT message, UINT wParam, LONG l
 
             debugWindow = hwndLog;
 
-            // ReadDib section
+            // Canvas
             ofn.lStructSize = sizeof(OPENFILENAME);
             ofn.hwndOwner = hwnd;
             ofn.lpstrFilter = szFilter[0];
@@ -359,6 +367,19 @@ long FAR PASCAL _export WndProcMain(HWND hwnd, UINT message, UINT wParam, LONG l
             ofn.lpstrDefExt = "ico";
             szFileName[0] = '\0';
             szTitleName[0] = '\0';
+            
+            // EXE to patch
+            ofnExe.lStructSize = sizeof(OPENFILENAME);
+            ofnExe.hwndOwner = hwnd;
+            ofnExe.lpstrFilter = szFilterExe[0];
+            ofnExe.lpstrFile = szExeName;
+            ofnExe.nMaxFile = _MAX_PATH;
+            ofnExe.lpstrFileTitle = szExeTitle;
+            ofnExe.nMaxFileTitle = _MAX_FNAME + _MAX_EXT;
+            ofnExe.lpstrDefExt = "exe";
+            szExeName[0] = '\0';
+            szExeTitle[0] = '\0';
+
 
             return 0;
             }
@@ -381,9 +402,9 @@ long FAR PASCAL _export WndProcMain(HWND hwnd, UINT message, UINT wParam, LONG l
 
             SetCursorPos(lpMousePoint.x, lpMousePoint.y);
 
-            test_run(&patch_test);
-            nLength = wsprintf(szBuffer, "Test = %d", patch_test);
-            MessageBox(hwnd, szBuffer, "Main", MB_OK);
+            // test_run(&patch_test);
+            // nLength = wsprintf(szBuffer, "Test = %d", patch_test);
+            // MessageBox(hwnd, szBuffer, "Main", MB_OK);
 
             //ReadDib section
             xClient = cxBlock + max(0, (4*cxBlock - canvasSize)/2);
@@ -617,7 +638,10 @@ long FAR PASCAL _export WndProcMain(HWND hwnd, UINT message, UINT wParam, LONG l
                     return 0;
                 }
                 case IDM_EXP_TEST:{
-                    MessageBox(hwnd, "Not yet implemented.", szNameApp, MB_ICONEXCLAMATION | MB_OK);
+                    if(!GetSaveFileName(&ofnExe)){
+                        return 0;
+                    }
+                    MessageBox(hwnd, "Got EXE.", szNameApp, MB_ICONEXCLAMATION | MB_OK);
                     return 0;
                 }
 
