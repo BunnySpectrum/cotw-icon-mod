@@ -403,7 +403,7 @@ long FAR PASCAL _export WndProcMain(HWND hwnd, UINT message, UINT wParam, LONG l
             SetCursorPos(lpMousePoint.x, lpMousePoint.y);
 
             // test_run(&patch_test);
-            // nLength = wsprintf(szBuffer, "Test = %d", patch_test);
+            // nLength = wsprintf(szBuffer, "Test = %d", file_seek());
             // MessageBox(hwnd, szBuffer, "Main", MB_OK);
 
             //ReadDib section

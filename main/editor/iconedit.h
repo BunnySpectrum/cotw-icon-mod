@@ -12,6 +12,7 @@
 
 #include "utils.h"
 #include "cmd.h"
+#include "win.h"
 
 long FAR PASCAL _export WndProcMain(HWND, UINT, UINT, LONG);
 static char szNameApp[] = "CharacterCreator";
