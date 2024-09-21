@@ -17,10 +17,12 @@
 #define PRIx32 "lx"
 
 typedef int fd;
+typedef int fdmode;
 
 #else
 
 typedef FILE* fd;
+typedef char* fdmode;
 
 #include <stdint.h>
 #include <inttypes.h>

@@ -641,7 +641,12 @@ long FAR PASCAL _export WndProcMain(HWND hwnd, UINT message, UINT wParam, LONG l
                     if(!GetSaveFileName(&ofnExe)){
                         return 0;
                     }
-                    MessageBox(hwnd, "Got EXE.", szNameApp, MB_ICONEXCLAMATION | MB_OK);
+                    MessageBox(hwnd, "Got EXE.", szExeName, MB_ICONEXCLAMATION | MB_OK);
+                    
+                    if(!GetSaveFileName(&ofn)){
+                        return 0;
+                    }
+                    MessageBox(hwnd, "Got ICO.", szFileName, MB_ICONEXCLAMATION | MB_OK);
                     return 0;
                 }
 

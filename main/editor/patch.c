@@ -24,12 +24,9 @@ void test_run(int* inout){
 }
 
 //iconIndex is relative to the dirEntry
-void write_ico(FILE* exeFile, FILE* fileHandle, groupIconDirEntry_t dirEntry, castleResourceType_t iconResource, nameInfo_t iconNameInfo){
+void write_ico(fd exeFile, fd fileHandle, groupIconDirEntry_t dirEntry, castleResourceType_t iconResource, nameInfo_t iconNameInfo){
     uint8_t data;
     uint32_t addr;
-
-
-
 
     // little endian file
     //icon dir
@@ -71,53 +68,39 @@ void write_ico(FILE* exeFile, FILE* fileHandle, groupIconDirEntry_t dirEntry, ca
 
     //need to write rnLength bytes from offset<<4
     //printf("DBG: Writing %"PRIu16" bytes from %"PRIu16"\n", dirEntry.bytesInRes, iconNameInfo.rnOffset << 4);
-    fseek(exeFile, iconNameInfo.rnOffset << 4, SEEK_SET);
+    file_seek(exeFile, iconNameInfo.rnOffset << 4, SEEK_SET);
     for(addr=0; addr < dirEntry.bytesInRes; addr++){
         read_byte(exeFile, &data);
         putc(data, fileHandle);
     }
-
 }
 
 
-void replace_ico(FILE* exeFile, FILE* iconFile, groupIconDirEntry_t dirEntry, castleResourceType_t iconResource, nameInfo_t iconNameInfo){
+void replace_ico(fd exeFile, fd iconFile, groupIconDirEntry_t dirEntry, castleResourceType_t iconResource, nameInfo_t iconNameInfo){
     uint8_t data;
     uint32_t addr;
 
     //cheating - I know the offset is 0x16
-    fseek(iconFile, 0x16, SEEK_SET);
+    file_seek(iconFile, 0x16, SEEK_SET);
 
 
     //need to replace rnLength bytes from offset<<4
     // printf("Seek to %#"PRIx32", write %#"PRIx32" bytes\n", (uint32_t)iconNameInfo.rnOffset << 4, dirEntry.bytesInRes); //cast then shift for win3.1
-    fseek(exeFile, (uint32_t)iconNameInfo.rnOffset << 4, SEEK_SET); //cast then shift for win3.1
+    file_seek(exeFile, (uint32_t)iconNameInfo.rnOffset << 4, SEEK_SET); //cast then shift for win3.1
 
     for(addr=0; addr < dirEntry.bytesInRes; addr++){
         read_byte(iconFile, &data);
-        fwrite(&data, 1, 1, exeFile);
+        file_write(&data, 1, 1, exeFile);
     }
     // printf("\nWrote %#x bytes\n", addr);
 
 }
 
-uint8_t parse_args(int argc, char* argv[], char** exePath, char** iconPath){
-    if (argc != 3){
-        return MAIN_ERR;
-    }
 
-    *exePath = argv[1];
-    *iconPath = argv[2];
-
-    return MAIN_OK;
-    // TODO
-    // dry-run mode
-}
-
-
-int patch(int argc, char* argv[]){
-    char* exePath;
-    char* iconPath;
-    FILE *fp;
+int patch(char* exePath, char* iconPath){
+    // char* exePath;
+    // char* iconPath;
+    fd fp;
     uint32_t currentTypeInfoAddress;
     typeInfoList_t typeInfoList;
     castleResources_t castleResources;
@@ -125,26 +108,13 @@ int patch(int argc, char* argv[]){
     groupIconDirEntry_t groupIconDirEntry;
     nameInfo_t groupIconNameInfo;
     nameInfo_t iconNameInfo;
-    FILE* iconFile;
+    fd iconFile;
     dosHeader_t dosHeader;
     windowsHeader_t winHeader;
     resourceTable_t resourceTable;
 
 
-    if (MAIN_OK != parse_args(argc, argv, &exePath, &iconPath)){
-        // printf("Incorrect number of arguments. Argc = %d\n", argc);
-        // printf("Usage: %s path/to/exe path/to/icon\n", argv[0]);
-        return 0;
-    }
-    // printf("%d) Path to EXE: %s\n", __LINE__, exePath);
-    // return 0;
-
-
-
-
-
-
-    fp = fopen(exePath, "rb+");
+    fp = file_open(exePath, OF_READ | OF_WRITE);
     // printf("EXE: %s\n", exePath);
     if (!fp){
 	#ifdef WIN31
@@ -204,37 +174,37 @@ int patch(int argc, char* argv[]){
 
 
         switch(typeInfoList.typeInfo.rtTypeID & 0xFFF){
-            case RT_GROUP_CURSOR:
+            case bRT_GROUP_CURSOR:
                 castleResources.groupCursor.resourceCount = typeInfoList.typeInfo.rtResourceCount;
                 castleResources.groupCursor.nameInfoAddress = typeInfoList.address + 0x8;
                 break;
             
-            case RT_CURSOR:
+            case bRT_CURSOR:
                 castleResources.cursor.resourceCount = typeInfoList.typeInfo.rtResourceCount;
                 castleResources.cursor.nameInfoAddress = typeInfoList.address + 0x8;
                 break;
 
-            case RT_GROUP_ICON:
+            case bRT_GROUP_ICON:
                 castleResources.groupIcon.resourceCount = typeInfoList.typeInfo.rtResourceCount;
                 castleResources.groupIcon.nameInfoAddress = typeInfoList.address + 0x8;
                 break;
 
-            case RT_ICON:
+            case bRT_ICON:
                 castleResources.icon.resourceCount = typeInfoList.typeInfo.rtResourceCount;
                 castleResources.icon.nameInfoAddress = typeInfoList.address + 0x8;
                 break;
 
-            case RT_BITMAP:
+            case bRT_BITMAP:
                 castleResources.bitmap.resourceCount = typeInfoList.typeInfo.rtResourceCount;
                 castleResources.bitmap.nameInfoAddress = typeInfoList.address + 0x8;
                 break;
 
-            case RT_MENU:
+            case bRT_MENU:
                 castleResources.menu.resourceCount = typeInfoList.typeInfo.rtResourceCount;
                 castleResources.menu.nameInfoAddress = typeInfoList.address + 0x8;
                 break;
 
-            case RT_DIALOG:
+            case bRT_DIALOG:
                 castleResources.dialog.resourceCount = typeInfoList.typeInfo.rtResourceCount;
                 castleResources.dialog.nameInfoAddress = typeInfoList.address + 0x8;
                 break;
@@ -269,7 +239,7 @@ int patch(int argc, char* argv[]){
     
     
 
-    iconFile = fopen(iconPath, "rb");
+    iconFile = file_open(iconPath, OF_READ);
     // printf("Icon: %s\n", iconPath);
 
     if (!iconFile){
@@ -282,5 +252,5 @@ int patch(int argc, char* argv[]){
     }
     
     replace_ico(fp, iconFile, groupIconDirEntry, castleResources.icon, iconNameInfo);
-    fclose(fp);
+    file_close(fp);
 }

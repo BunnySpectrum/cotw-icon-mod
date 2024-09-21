@@ -2,6 +2,21 @@
 #include "io.h"
 
 
+fd file_open(char* name, fdmode mode){
+    #ifdef WIN31
+    return _lopen(name, mode);
+    #else
+    return fopen(name, mode);
+    #endif
+}
+
+void file_close(fd fileHandle){
+    #ifdef WIN31
+    _lclose(fileHandle);
+    #else
+    fclose(fileHandle);
+    #endif
+}
 
 int file_seek(fd fileHandle, long position, int flags){
     #ifdef WIN31
@@ -16,6 +31,14 @@ int file_read(void *ptr, size_t size, size_t nmemb, fd fileHandle){
     return _lread(fileHandle, ptr, size);
     #else
     return fread(ptr, size, nmemb, fileHandle);
+    #endif
+}
+
+int file_write(void *ptr, size_t size, size_t nmemb, fd fileHandle){
+    #ifdef WIN31
+    return _lwrite(fileHandle, ptr, size);
+    #else
+    return fwrite(ptr, size, nmemb, fileHandle);
     #endif
 }
 

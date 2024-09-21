@@ -18,8 +18,11 @@ extern "C" {
 #define DOS_OFFSET_WINDOWS 0x3C
 
 
+fd file_open(char* name, fdmode mode);
+void file_close(fd fileHandle);
 int file_seek(fd fileHandle, long position, int flags);
 int file_read(void *ptr, size_t size, size_t nmemb, fd fileHandle);
+int file_write(void *ptr, size_t size, size_t nmemb, fd fileHandle);
 
 
 typedef struct{
