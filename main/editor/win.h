@@ -9,6 +9,7 @@ extern "C" {
 #include <stdlib.h>
 
 #include "bunint.h"
+#include "bun_io.h"
 
 #define WIN_CHAR_LEN 1
 #define WIN_WORD_LEN 2
@@ -18,11 +19,11 @@ extern "C" {
 #define DOS_OFFSET_WINDOWS 0x3C
 
 
-fd file_open(char* name, fdmode mode);
-void file_close(fd fileHandle);
-int file_seek(fd fileHandle, long position, int flags);
-int file_read(void *ptr, size_t size, size_t nmemb, fd fileHandle);
-int file_write(void *ptr, size_t size, size_t nmemb, fd fileHandle);
+int file_open(bun_file_s file);
+void file_close(bun_file_s file);
+int file_seek(bun_file_s file, long position, int flags);
+int file_read(bun_file_s file, void *ptr, size_t size, size_t nmemb);
+int file_write(bun_file_s file, void *ptr, size_t size, size_t nmemb);
 
 
 typedef struct{
@@ -32,9 +33,9 @@ typedef struct{
 
 } dosHeader_t;
 
-uint8_t dos_read_magic(fd fileHandle, dosHeader_t* header);
-uint8_t dos_read_table_offset(fd fileHandle, dosHeader_t* header);
-uint8_t dos_read_windows_offset(fd fileHandle, dosHeader_t* header);
+uint8_t dos_read_magic(bun_file_s file, dosHeader_t* header);
+uint8_t dos_read_table_offset(bun_file_s file, dosHeader_t* header);
+uint8_t dos_read_windows_offset(bun_file_s file, dosHeader_t* header);
 
 
 #define WIN_OFFSET_RESOURCE_TABLE 0x24
@@ -45,8 +46,8 @@ typedef struct{
 
 } windowsHeader_t;
 
-uint8_t win_read_magic(fd fileHandle, windowsHeader_t* header, uint32_t baseAddress);
-uint8_t win_read_resource_table_offset(fd fileHandle, windowsHeader_t* header, uint32_t baseAddress);
+uint8_t win_read_magic(bun_file_s file, windowsHeader_t* header, uint32_t baseAddress);
+uint8_t win_read_resource_table_offset(bun_file_s file, windowsHeader_t* header, uint32_t baseAddress);
 
 
 
@@ -138,17 +139,17 @@ typedef struct{
 
 } resourceTable_t;
 
-uint8_t rcs_table_read_shift(fd fileHandle, resourceTable_t* table);
-uint8_t rt_read_type_id(fd fileHandle, typeInfoList_t* typeInfoList);
-uint8_t rt_read_resource_count(fd fileHandle, typeInfoList_t* typeInfoList);
-uint8_t read_nameinfo(fd fileHandle, uint32_t address, nameInfo_t* nameInfo);
+uint8_t rcs_table_read_shift(bun_file_s file, resourceTable_t* table);
+uint8_t rt_read_type_id(bun_file_s file, typeInfoList_t* typeInfoList);
+uint8_t rt_read_resource_count(bun_file_s file, typeInfoList_t* typeInfoList);
+uint8_t read_nameinfo(bun_file_s file, uint32_t address, nameInfo_t* nameInfo);
 
 
 void print_nameinfo(nameInfo_t nameInfo);
 
-void access_group_icon(fd fileHandle, uint32_t address, groupIconDir_t* record);
+void access_group_icon(bun_file_s file, uint32_t address, groupIconDir_t* record);
 void print_group_icon_dir(groupIconDir_t record);
-void access_group_icon_entry(fd fileHandle, uint32_t address, uint16_t index, groupIconDirEntry_t* record);
+void access_group_icon_entry(bun_file_s file, uint32_t address, uint16_t index, groupIconDirEntry_t* record);
 void print_group_icon_dir_entry(groupIconDirEntry_t record);
 
 
