@@ -15,6 +15,8 @@
 #include "castle.h"
 #include "io.h"
 
+#include "bun_io.h"
+
 
 #define MAIN_OK 1
 #define MAIN_ERR 0

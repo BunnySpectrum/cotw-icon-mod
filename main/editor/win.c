@@ -2,115 +2,115 @@
 #include "io.h"
 
 
-fd file_open(bun_file_s file){
+fd file_open(bun_file_s* pfile){
     #ifdef WIN31
-    return _lopen(file.name, file.mode_flags);
+    return _lopen(pfile->name, pfile->mode_flags);
     #else
-    return fopen(file.name, file.mode_str);
+    return fopen(pfile->name, pfile->mode_str);
     #endif
 }
 
-void file_close(bun_file_s file){
+void file_close(bun_file_s* pfile){
     #ifdef WIN31
-    _lclose(file.handle);
+    _lclose(pfile->handle);
     #else
-    fclose((FILE*)file.handle);
+    fclose((FILE*)pfile->handle);
     #endif
 }
 
-int file_seek(bun_file_s file, long position, int flags){
+int file_seek(bun_file_s* pfile, long position, int flags){
     #ifdef WIN31
-    return _llseek(file.handle, position, flags);
+    return _llseek((HFILE)pfile->handle, (long)position, (int)flags);
     #else
-    return fseek((FILE*)file.info, position, flags);
+    return fseek((FILE*)pfile->info, position, flags);
     #endif
 }
 
-int file_read(bun_file_s file, void *ptr, size_t size, size_t nmemb){
+int file_read(bun_file_s* pfile, void *ptr, size_t size, size_t nmemb){
     #ifdef WIN31
-    return _lread(file.handle, ptr, size);
+    return _lread(pfile->handle, ptr, size);
     #else
-    return fread(ptr, size, nmemb, (FILE*)file.info);
+    return fread(ptr, size, nmemb, (FILE*)pfile->info);
     #endif
 }
 
-int file_write(bun_file_s file, void *ptr, size_t size, size_t nmemb){
+int file_write(bun_file_s* pfile, void *ptr, size_t size, size_t nmemb){
     #ifdef WIN31
-    return _lwrite(file.handle, ptr, size);
+    return _lwrite(pfile->handle, ptr, size);
     #else
-    return fwrite(ptr, size, nmemb, (FILE*)file.info);
+    return fwrite(ptr, size, nmemb, (FILE*)pfile->info);
     #endif
 }
 
-uint8_t dos_read_magic(bun_file_s file, dosHeader_t* header){
+uint8_t dos_read_magic(bun_file_s* pfile, dosHeader_t* header){
     // printf("Reading magic number\n");
 
-    file_seek(file, 0, SEEK_SET);
-    read_byte(file, &header->signature[0]);
-    read_byte(file, &header->signature[1]);
+    file_seek(pfile, 0, SEEK_SET);
+    read_byte(pfile, &header->signature[0]);
+    read_byte(pfile, &header->signature[1]);
     return 1;
 }
 
-uint8_t dos_read_table_offset(bun_file_s file, dosHeader_t* header){
+uint8_t dos_read_table_offset(bun_file_s* pfile, dosHeader_t* header){
     //printf("Reading table offset\n");
 
-    file_seek(file, DOS_OFFSET_TABLE, SEEK_SET);
-    read_word(file, &header->tableOffset);
+    file_seek(pfile, DOS_OFFSET_TABLE, SEEK_SET);
+    read_word(pfile, &header->tableOffset);
     return 1;
 }
 
-uint8_t dos_read_windows_offset(bun_file_s file, dosHeader_t* header){
+uint8_t dos_read_windows_offset(bun_file_s* pfile, dosHeader_t* header){
     //printf("Reading Windows header offset\n");
 
-    file_seek(file, DOS_OFFSET_WINDOWS, SEEK_SET);
-    read_dword(file, &header->windowsOffset);
+    file_seek(pfile, DOS_OFFSET_WINDOWS, SEEK_SET);
+    read_dword(pfile, &header->windowsOffset);
     return 1;
 }
 
 // Windows header section
 
-uint8_t win_read_magic(bun_file_s file, windowsHeader_t* header, uint32_t baseAddress){
+uint8_t win_read_magic(bun_file_s* pfile, windowsHeader_t* header, uint32_t baseAddress){
     //printf("Reading magic number\n");
 
-    file_seek(file, baseAddress, SEEK_SET);
-    read_byte(file, &header->signature[0]);
-    read_byte(file, &header->signature[1]);
+    file_seek(pfile, baseAddress, SEEK_SET);
+    read_byte(pfile, &header->signature[0]);
+    read_byte(pfile, &header->signature[1]);
     return 1;
 }
 
-uint8_t win_read_resource_table_offset(bun_file_s file, windowsHeader_t* header, uint32_t baseAddress){
-    file_seek(file, baseAddress + WIN_OFFSET_RESOURCE_TABLE, SEEK_SET);
-    read_word(file, &header->resourceTableOffset);
+uint8_t win_read_resource_table_offset(bun_file_s* pfile, windowsHeader_t* header, uint32_t baseAddress){
+    file_seek(pfile, baseAddress + WIN_OFFSET_RESOURCE_TABLE, SEEK_SET);
+    read_word(pfile, &header->resourceTableOffset);
     return 1;
 }
 
 
 
 
-uint8_t rcs_table_read_shift(bun_file_s file, resourceTable_t* table){
-    file_seek(file, table->baseAddress + 0, SEEK_SET);
-    read_word(file, &table->rcsAlignShift);
+uint8_t rcs_table_read_shift(bun_file_s* pfile, resourceTable_t* table){
+    file_seek(pfile, table->baseAddress + 0, SEEK_SET);
+    read_word(pfile, &table->rcsAlignShift);
     return 1;
 }
 
-uint8_t rt_read_type_id(bun_file_s file, typeInfoList_t* typeInfoList){
-    file_seek(file, typeInfoList->address + 0, SEEK_SET);
-    read_word(file, &typeInfoList->typeInfo.rtTypeID);
+uint8_t rt_read_type_id(bun_file_s* pfile, typeInfoList_t* typeInfoList){
+    file_seek(pfile, typeInfoList->address + 0, SEEK_SET);
+    read_word(pfile, &typeInfoList->typeInfo.rtTypeID);
     return 1;
 }
 
-uint8_t rt_read_resource_count(bun_file_s file, typeInfoList_t* typeInfoList){
-    file_seek(file, typeInfoList->address + 0x2, SEEK_SET);
-    read_word(file, &typeInfoList->typeInfo.rtResourceCount);
+uint8_t rt_read_resource_count(bun_file_s* pfile, typeInfoList_t* typeInfoList){
+    file_seek(pfile, typeInfoList->address + 0x2, SEEK_SET);
+    read_word(pfile, &typeInfoList->typeInfo.rtResourceCount);
     return 1;
 }
 
-uint8_t read_nameinfo(bun_file_s file, uint32_t address, nameInfo_t* nameInfo){
-    file_seek(file, address, SEEK_SET);
-    read_word(file, &nameInfo->rnOffset);
-    read_word(file, &nameInfo->rnLength);
-    read_word(file, &nameInfo->rnFlags);
-    read_word(file, &nameInfo->rnID);
+uint8_t read_nameinfo(bun_file_s* pfile, uint32_t address, nameInfo_t* nameInfo){
+    file_seek(pfile, address, SEEK_SET);
+    read_word(pfile, &nameInfo->rnOffset);
+    read_word(pfile, &nameInfo->rnLength);
+    read_word(pfile, &nameInfo->rnFlags);
+    read_word(pfile, &nameInfo->rnID);
     return 1;
 }
 
@@ -123,12 +123,12 @@ void print_nameinfo(nameInfo_t nameInfo){
 }
 
 
-void access_group_icon(bun_file_s file, uint32_t address, groupIconDir_t* record){
+void access_group_icon(bun_file_s* pfile, uint32_t address, groupIconDir_t* record){
     // printf("\tDBG address: %#"PRIx32"\n", address);
-    file_seek(file, address, SEEK_SET);
-    read_word(file, &record->rsvd);
-    read_word(file, &record->type);
-    read_word(file, &record->count);
+    file_seek(pfile, address, SEEK_SET);
+    read_word(pfile, &record->rsvd);
+    read_word(pfile, &record->type);
+    read_word(pfile, &record->count);
     record->entryAddress = (address + 3*WIN_WORD_LEN);
 
 }
@@ -140,16 +140,16 @@ void print_group_icon_dir(groupIconDir_t record){
     // printf("Entries address: %#"PRIx32"\n", record.entryAddress);
 }
 
-void access_group_icon_entry(bun_file_s file, uint32_t address, uint16_t index, groupIconDirEntry_t* record){
-    file_seek(file, address + index*ICON_DIR_ENTRY_BYTE_LENGTH, SEEK_SET);
-    read_byte(file, &record->width);
-    read_byte(file, &record->height);
-    read_byte(file, &record->colorCount);
-    read_byte(file, &record->rsvd);
-    read_word(file, &record->planes);    
-    read_word(file, &record->bitCount);
-    read_dword(file, &record->bytesInRes);
-    read_word(file, &record->id);    
+void access_group_icon_entry(bun_file_s* pfile, uint32_t address, uint16_t index, groupIconDirEntry_t* record){
+    file_seek(pfile, address + index*ICON_DIR_ENTRY_BYTE_LENGTH, SEEK_SET);
+    read_byte(pfile, &record->width);
+    read_byte(pfile, &record->height);
+    read_byte(pfile, &record->colorCount);
+    read_byte(pfile, &record->rsvd);
+    read_word(pfile, &record->planes);    
+    read_word(pfile, &record->bitCount);
+    read_dword(pfile, &record->bytesInRes);
+    read_word(pfile, &record->id);    
 
 }
 
