@@ -18,9 +18,9 @@ void file_close(bun_file_s* pfile){
     #endif
 }
 
-int file_seek(bun_file_s* pfile, long position, int flags){
+long file_seek(bun_file_s* pfile, long position, int flags){
     #ifdef WIN31
-    return _llseek((HFILE)pfile->handle, (long)position, (int)flags);
+    return _llseek(pfile->handle, position, flags);
     #else
     return fseek((FILE*)pfile->info, position, flags);
     #endif
@@ -40,6 +40,10 @@ int file_write(bun_file_s* pfile, void *ptr, size_t size, size_t nmemb){
     #else
     return fwrite(ptr, size, nmemb, (FILE*)pfile->info);
     #endif
+}
+
+int put_char(char data, bun_file_s* pfile){
+    return file_write(pfile, &data, 1, 0);
 }
 
 uint8_t dos_read_magic(bun_file_s* pfile, dosHeader_t* header){

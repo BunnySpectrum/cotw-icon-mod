@@ -21,9 +21,10 @@ extern "C" {
 
 int file_open(bun_file_s* pfile);
 void file_close(bun_file_s* pfile);
-int file_seek(bun_file_s* pfile, long position, int flags);
+long file_seek(bun_file_s* pfile, long position, int flags);
 int file_read(bun_file_s* pfile, void *ptr, size_t size, size_t nmemb);
 int file_write(bun_file_s* pfile, void *ptr, size_t size, size_t nmemb);
+int put_char(char data, bun_file_s* pfile);
 
 
 typedef struct{

@@ -33,47 +33,47 @@ void write_ico(fd exeFile, fd fileHandle, groupIconDirEntry_t dirEntry, castleRe
     // little endian file
     //icon dir
     // write [00, 00] rsvd
-    putc(0x00, fileHandle);
-    putc(0x00, fileHandle);
+    put_char(0x00, fileHandle);
+    put_char(0x00, fileHandle);
 
     // write [01, 00] 1 = icon, 2 = cursor
-    putc(0x01, fileHandle);
-    putc(0x00, fileHandle);
+    put_char(0x01, fileHandle);
+    put_char(0x00, fileHandle);
 
     // write [01, 00] number of icons in file, will always be 1 for this function
-    putc(0x01, fileHandle);
-    putc(0x00, fileHandle);
+    put_char(0x01, fileHandle);
+    put_char(0x00, fileHandle);
 
     // write contents of icondirentry
     // except offset 12 is offset to BMP data from start of file
-    putc(dirEntry.width, fileHandle);
-    putc(dirEntry.height, fileHandle);
-    putc(dirEntry.colorCount, fileHandle);
-    putc(dirEntry.rsvd, fileHandle);
+    put_char(dirEntry.width, fileHandle);
+    put_char(dirEntry.height, fileHandle);
+    put_char(dirEntry.colorCount, fileHandle);
+    put_char(dirEntry.rsvd, fileHandle);
 
-    putc(dirEntry.planes & 0xFF, fileHandle);
-    putc((dirEntry.planes >> 8)&0xFF, fileHandle);
+    put_char(dirEntry.planes & 0xFF, fileHandle);
+    put_char((dirEntry.planes >> 8)&0xFF, fileHandle);
 
-    putc(dirEntry.bitCount & 0xFF, fileHandle);
-    putc((dirEntry.bitCount >> 8)&0xFF, fileHandle);
+    put_char(dirEntry.bitCount & 0xFF, fileHandle);
+    put_char((dirEntry.bitCount >> 8)&0xFF, fileHandle);
 
-    putc((uint8_t)(dirEntry.bytesInRes & 0xFF), fileHandle);
-    putc((uint8_t)((dirEntry.bytesInRes >> 8)&0xFF), fileHandle);
-    putc((uint8_t)((dirEntry.bytesInRes >> 16)&0xFF), fileHandle);
-    putc((uint8_t)((dirEntry.bytesInRes >> 24)&0xFF), fileHandle);
+    put_char((uint8_t)(dirEntry.bytesInRes & 0xFF), fileHandle);
+    put_char((uint8_t)((dirEntry.bytesInRes >> 8)&0xFF), fileHandle);
+    put_char((uint8_t)((dirEntry.bytesInRes >> 16)&0xFF), fileHandle);
+    put_char((uint8_t)((dirEntry.bytesInRes >> 24)&0xFF), fileHandle);
 
     // write offset
-    putc(0x16, fileHandle);
-    putc(0x00, fileHandle);
-    putc(0x00, fileHandle);
-    putc(0x00, fileHandle);        
+    put_char(0x16, fileHandle);
+    put_char(0x00, fileHandle);
+    put_char(0x00, fileHandle);
+    put_char(0x00, fileHandle);        
 
     //need to write rnLength bytes from offset<<4
     //printf("DBG: Writing %"PRIu16" bytes from %"PRIu16"\n", dirEntry.bytesInRes, iconNameInfo.rnOffset << 4);
     file_seek(exeFile, iconNameInfo.rnOffset << 4, SEEK_SET);
     for(addr=0; addr < dirEntry.bytesInRes; addr++){
         read_byte(exeFile, &data);
-        putc(data, fileHandle);
+        put_char(data, fileHandle);
     }
 }
 
