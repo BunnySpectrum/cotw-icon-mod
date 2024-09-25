@@ -2,7 +2,7 @@
 #define _PATCH_H_
 
 
-void test_run(int* inout);
+int patch(char* exePath, char* iconPath);
 
 
 #endif

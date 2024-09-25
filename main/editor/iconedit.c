@@ -638,6 +638,8 @@ long FAR PASCAL _export WndProcMain(HWND hwnd, UINT message, UINT wParam, LONG l
                     return 0;
                 }
                 case IDM_EXP_TEST:{
+                    int result;
+
                     if(!GetSaveFileName(&ofnExe)){
                         return 0;
                     }
@@ -647,6 +649,10 @@ long FAR PASCAL _export WndProcMain(HWND hwnd, UINT message, UINT wParam, LONG l
                         return 0;
                     }
                     MessageBox(hwnd, "Got ICO.", szFileName, MB_ICONEXCLAMATION | MB_OK);
+
+                    result = patch(szExeName, szFileName);
+                    MessageBox(hwnd, "Done.", result, MB_ICONEXCLAMATION | MB_OK);
+                    
                     return 0;
                 }
 
