@@ -99,7 +99,7 @@ void replace_ico(bun_file_s *pExeFile, bun_file_s *pIconFile, groupIconDirEntry_
 }
 
 
-int patch(char* exePath, char* iconPath){
+int patch(char* exePath, char* iconPath, uint16_t* result){
     // char* exePath;
     // char* iconPath;
     int exe_handle, icon_handle;
@@ -125,24 +125,22 @@ int patch(char* exePath, char* iconPath){
     exe_handle = file_open(&exe_file);
     // printf("EXE: %s\n", exePath);
     if (!exe_handle){
-	#ifdef WIN31
-	    // printf("Unable to open EXE.");
-	#else
-        	perror("Unable to open EXE.");
-	#endif
-        return 0;
+        return 1;
+    }else{
+        // return 2; XXX got here
     }
 
+    dosHeader.signature[0] = 0;
+    dosHeader.signature[1] = 0;
 
     dos_read_magic(&exe_file, &dosHeader);
+    *result = dosHeader.signature[0] || (dosHeader.signature[1] << 8) & 0xFF;
+    return 99;
+
     dos_read_table_offset(&exe_file, &dosHeader);
     dos_read_windows_offset(&exe_file, &dosHeader);
 
-
-    // printf("***DOS header***\n");
-    // printf("Signature: %c%c\n", dosHeader.signature[0], dosHeader.signature[1]);
-    // printf("Table offset: %#x\n", dosHeader.tableOffset);
-    // printf("Windows offset: %#x\n", dosHeader.windowsOffset);
+    // return 3; XXX got here
 
 
     // Start reading windows header
@@ -153,17 +151,14 @@ int patch(char* exePath, char* iconPath){
     win_read_magic(&exe_file, &winHeader, dosHeader.windowsOffset);
     win_read_resource_table_offset(&exe_file, &winHeader, dosHeader.windowsOffset);
 
-    // printf("\n***Windows header***\n");
-    // printf("Signature: %c%c\n", winHeader.signature[0], winHeader.signature[1]);
-    // printf("Resource table offset: %#0*x rel, %#x abs\n", 6, winHeader.resourceTableOffset, winHeader.resourceTableOffset + dosHeader.windowsOffset);
+    // return 4; XXX got here
 
 
     // Start reading resource table
     resourceTable.baseAddress = winHeader.resourceTableOffset + dosHeader.windowsOffset;
     rcs_table_read_shift(&exe_file, &resourceTable);
 
-    // printf("\n***Resource Table***\n");
-    // printf("Alignment shift count: %d\n", resourceTable.rcsAlignShift);
+    // return 5; XXX got here
 
     currentTypeInfoAddress = resourceTable.baseAddress + 0x2;
     

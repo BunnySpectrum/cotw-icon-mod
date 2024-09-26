@@ -638,20 +638,21 @@ long FAR PASCAL _export WndProcMain(HWND hwnd, UINT message, UINT wParam, LONG l
                     return 0;
                 }
                 case IDM_EXP_TEST:{
-                    int result;
+                    int result, rc;
 
                     if(!GetSaveFileName(&ofnExe)){
                         return 0;
                     }
-                    MessageBox(hwnd, "Got EXE.", szExeName, MB_ICONEXCLAMATION | MB_OK);
+                    // MessageBox(hwnd, "Got EXE.", szExeName, MB_ICONEXCLAMATION | MB_OK);
                     
                     if(!GetSaveFileName(&ofn)){
                         return 0;
                     }
-                    MessageBox(hwnd, "Got ICO.", szFileName, MB_ICONEXCLAMATION | MB_OK);
+                    // MessageBox(hwnd, "Got ICO.", szFileName, MB_ICONEXCLAMATION | MB_OK);
 
-                    result = patch(szExeName, szFileName);
-                    MessageBox(hwnd, "Done.", result, MB_ICONEXCLAMATION | MB_OK);
+                    rc = patch(szExeName, szFileName, &result);
+                    nLength = wsprintf(szBuffer, "RC = %d, result = %d", rc, result);
+                    MessageBox(hwnd, szBuffer, "Main", MB_OK);
                     
                     return 0;
                 }
