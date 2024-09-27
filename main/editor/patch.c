@@ -122,16 +122,22 @@ int patch(char* exePath, char* iconPath, uint16_t* result){
     icon_file.mode_flags = OF_READ;
 
 
-    exe_handle = file_open(&exe_file);
+    exe_handle = _lopen(exePath, OF_READ | OF_WRITE);
+    // exe_handle = file_open(&exe_file);
     // printf("EXE: %s\n", exePath);
-    if (!exe_handle){
-        return 1;
+    if (-1 == exe_handle){
+        return -1;
     }else{
         // return 2; XXX got here
     }
+    exe_file.handle = exe_handle;
 
     dosHeader.signature[0] = 0;
     dosHeader.signature[1] = 0;
+    _llseek(exe_handle, 0, SEEK_SET);
+    if(1 != _lread(exe_handle, (LPSTR)(&dosHeader.signature[0]), 1)){
+        return 0;
+    }
 
     dos_read_magic(&exe_file, &dosHeader);
     *result = dosHeader.signature[0] || (dosHeader.signature[1] << 8) & 0xFF;
@@ -246,15 +252,11 @@ int patch(char* exePath, char* iconPath, uint16_t* result){
     // printf("Icon: %s\n", iconPath);
 
     if (!icon_handle){
-	#ifdef WIN31
-	    // printf("Unable to open icon.");
-	#else
-        	perror("Unable to open icon.");
-	#endif
-        return 0;
+        return -1;
     }
+    icon_file.handle = icon_handle;
     
     replace_ico(&exe_file, &icon_file, groupIconDirEntry, castleResources.icon, iconNameInfo);
     file_close(&exe_file);
-    return 1;
+    return 100;
 }

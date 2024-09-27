@@ -638,7 +638,7 @@ long FAR PASCAL _export WndProcMain(HWND hwnd, UINT message, UINT wParam, LONG l
                     return 0;
                 }
                 case IDM_EXP_TEST:{
-                    int result, rc;
+                    int result, rc, handle;
 
                     if(!GetSaveFileName(&ofnExe)){
                         return 0;
@@ -650,8 +650,19 @@ long FAR PASCAL _export WndProcMain(HWND hwnd, UINT message, UINT wParam, LONG l
                     }
                     // MessageBox(hwnd, "Got ICO.", szFileName, MB_ICONEXCLAMATION | MB_OK);
 
-                    rc = patch(szExeName, szFileName, &result);
-                    nLength = wsprintf(szBuffer, "RC = %d, result = %d", rc, result);
+                    // rc = patch(szExeName, szFileName, &result);
+                    handle = _lopen(szFileName, OF_READ);
+                    if(-1 == handle){
+                        MessageBox(hwnd, "Unable to open file", "Main", MB_OK);
+                        return 0;
+                    }
+                    _llseek(handle, 0, SEEK_SET);
+                    if(1 != _lread(handle, (LPSTR)(&result), 1)){
+                        MessageBox(hwnd, "Unable to read file", "Main", MB_OK);
+                        return 0;
+                    }
+
+                    nLength = wsprintf(szBuffer, "handle = %d, result = %d", handle, result);
                     MessageBox(hwnd, szBuffer, "Main", MB_OK);
                     
                     return 0;
