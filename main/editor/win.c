@@ -28,7 +28,7 @@ long file_seek(bun_file_s* pfile, long position, int flags){
 
 int file_read(bun_file_s* pfile, void *ptr, size_t size, size_t nmemb){
     #ifdef WIN31
-    return _lread(pfile->handle, (LPSTR)ptr, size);
+    return (size == _lread(pfile->handle, (LPSTR)ptr, size));
     #else
     return fread(ptr, size, nmemb, (FILE*)pfile->info);
     #endif

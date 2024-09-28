@@ -638,7 +638,8 @@ long FAR PASCAL _export WndProcMain(HWND hwnd, UINT message, UINT wParam, LONG l
                     return 0;
                 }
                 case IDM_EXP_TEST:{
-                    int result, rc, handle;
+                    int result, rc, hExe, hIcon;
+                    result = 0;
 
                     if(!GetSaveFileName(&ofnExe)){
                         return 0;
@@ -650,20 +651,33 @@ long FAR PASCAL _export WndProcMain(HWND hwnd, UINT message, UINT wParam, LONG l
                     }
                     // MessageBox(hwnd, "Got ICO.", szFileName, MB_ICONEXCLAMATION | MB_OK);
 
-                    // rc = patch(szExeName, szFileName, &result);
-                    handle = _lopen(szFileName, OF_READ);
-                    if(-1 == handle){
-                        MessageBox(hwnd, "Unable to open file", "Main", MB_OK);
-                        return 0;
-                    }
-                    _llseek(handle, 0, SEEK_SET);
-                    if(1 != _lread(handle, (LPSTR)(&result), 1)){
-                        MessageBox(hwnd, "Unable to read file", "Main", MB_OK);
-                        return 0;
-                    }
+                    // rc = patch(&ofnExe, &ofn, &result);
+                    // nLength = wsprintf(szBuffer, "rc = %d, result = %x", rc, result);
+                    // MessageBox(hwnd, szBuffer, "Main", MB_OK);
 
-                    nLength = wsprintf(szBuffer, "handle = %d, result = %d", handle, result);
+                    hExe = _lopen(ofnExe.lpstrFile, OF_READ);
+                    if(-1 == hExe){
+                        MessageBox(hwnd, "Unable to open EXE file", "Main", MB_OK);
+                        return 0;
+                    }
+                    hIcon = _lopen(ofn.lpstrFile, OF_READ);
+                    if(-1 == hIcon){
+                        MessageBox(hwnd, "Unable to open ICO file", "Main", MB_OK);
+                        return 0;
+                    }
+                    rc = patch(hExe, hIcon, &result);
+                    nLength = wsprintf(szBuffer, "2) rc = %d, result = %x", rc, result);
                     MessageBox(hwnd, szBuffer, "Main", MB_OK);
+
+
+
+                    // _llseek(handle, 0, SEEK_SET);
+                    // if(2 != _lread(handle, (LPSTR)(&result), 2)){
+                    //     MessageBox(hwnd, "Unable to read file", "Main", MB_OK);
+                    //     return 0;
+                    // }
+                    // nLength = wsprintf(szBuffer, "handle = %d, result = %x", handle, result);
+                    // MessageBox(hwnd, szBuffer, "Main", MB_OK);
                     
                     return 0;
                 }

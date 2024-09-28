@@ -51,11 +51,11 @@ void write_ico(bun_file_s *pExeFile, bun_file_s *pIconFile, groupIconDirEntry_t 
     put_char(dirEntry.colorCount, pIconFile);
     put_char(dirEntry.rsvd, pIconFile);
 
-    put_char(dirEntry.planes & 0xFF, pIconFile);
-    put_char((dirEntry.planes >> 8)&0xFF, pIconFile);
+    put_char((uint8_t)(dirEntry.planes & 0xFF), pIconFile);
+    put_char((uint8_t)((dirEntry.planes >> 8)&0xFF), pIconFile);
 
-    put_char(dirEntry.bitCount & 0xFF, pIconFile);
-    put_char((dirEntry.bitCount >> 8)&0xFF, pIconFile);
+    put_char((uint8_t)(dirEntry.bitCount & 0xFF), pIconFile);
+    put_char((uint8_t)((dirEntry.bitCount >> 8)&0xFF), pIconFile);
 
     put_char((uint8_t)(dirEntry.bytesInRes & 0xFF), pIconFile);
     put_char((uint8_t)((dirEntry.bytesInRes >> 8)&0xFF), pIconFile);
@@ -99,9 +99,8 @@ void replace_ico(bun_file_s *pExeFile, bun_file_s *pIconFile, groupIconDirEntry_
 }
 
 
-int patch(char* exePath, char* iconPath, uint16_t* result){
-    // char* exePath;
-    // char* iconPath;
+// int patch(OPENFILENAME* pofnExe, OPENFILENAME* pofnIcon, uint16_t* result){
+int patch(int hfileExe, int hfileIcon, uint16_t* result){
     int exe_handle, icon_handle;
     uint32_t currentTypeInfoAddress;
     typeInfoList_t typeInfoList;
@@ -115,32 +114,37 @@ int patch(char* exePath, char* iconPath, uint16_t* result){
     resourceTable_t resourceTable;
     bun_file_s exe_file, icon_file;
 
-    exe_file.name = exePath;
+    // exe_file.name = pofnExe->lpstrFile;
+    exe_file.handle = hfileExe;
     exe_file.mode_flags = OF_READ | OF_WRITE;
     
-    icon_file.name = iconPath;
+    // icon_file.name = pofnIcon->lpstrFile;
+    icon_file.handle = hfileIcon;
     icon_file.mode_flags = OF_READ;
 
 
-    exe_handle = _lopen(exePath, OF_READ | OF_WRITE);
+    // exe_handle = _lopen(pofnExe->lpstrFile, OF_READ);
     // exe_handle = file_open(&exe_file);
     // printf("EXE: %s\n", exePath);
-    if (-1 == exe_handle){
-        return -1;
-    }else{
+    // if (-1 == exe_handle){
+        // return -1;
+    // }else{
         // return 2; XXX got here
-    }
-    exe_file.handle = exe_handle;
+    // }
+    // exe_file.handle = exe_handle;
 
-    dosHeader.signature[0] = 0;
-    dosHeader.signature[1] = 0;
-    _llseek(exe_handle, 0, SEEK_SET);
-    if(1 != _lread(exe_handle, (LPSTR)(&dosHeader.signature[0]), 1)){
-        return 0;
+    dosHeader.signature[0] = 1;
+    dosHeader.signature[1] = 1;
+    *result = 0x20;
+    _llseek(hfileExe, 0, SEEK_SET);
+    if(2 != _lread(hfileExe, (LPSTR)(result), 2)){
+        return -1;
     }
+
+    return hfileExe;
 
     dos_read_magic(&exe_file, &dosHeader);
-    *result = dosHeader.signature[0] || (dosHeader.signature[1] << 8) & 0xFF;
+    *result = ((uint16_t)dosHeader.signature[0] << 8) || (dosHeader.signature[1]);
     return 99;
 
     dos_read_table_offset(&exe_file, &dosHeader);
