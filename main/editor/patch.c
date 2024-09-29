@@ -1,10 +1,4 @@
 
-#ifdef WIN31
-	#include "bunint.h"
-#else
-	#include <stdint.h>
-	#include <inttypes.h>
-#endif
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -16,6 +10,65 @@
 #include "io.h"
 
 #include "bun_io.h"
+// File handling largely based on popfile.c from the Petzold book, page 477
+
+static OPENFILENAME ofnExe;
+static OPENFILENAME ofnIco;
+
+void PatchInit(HWND hwnd){
+    static char* szFilterExe[] = {"EXE (*.EXE)", "*.exe", ""}; 
+    static char *szFilterIco[] = {"ICON (*.ICO)", "*.ico", ""};
+
+    ofnExe.lStructSize = sizeof(OPENFILENAME);
+    ofnExe.hwndOwner = hwnd;
+    ofnExe.hInstance = NULL;
+    ofnExe.lpstrFilter = szFilterExe[0];
+    ofnExe.lpstrCustomFilter = NULL;
+    ofnExe.nMaxCustFilter = 0;
+    ofnExe.nFilterIndex = 0;
+    ofnExe.lpstrFile = NULL;
+    ofnExe.nMaxFile = _MAX_PATH;
+    ofnExe.lpstrFileTitle = NULL;
+    ofnExe.nMaxFileTitle = _MAX_FNAME + _MAX_EXT;
+    ofnExe.lpstrInitialDir = NULL;
+    ofnExe.lpstrTitle = NULL;
+    ofnExe.Flags = 0;
+    ofnExe.nFileOffset = 0;
+    ofnExe.nFileExtension = 0;
+    ofnExe.lpstrDefExt = "exe";
+    ofnExe.lCustData = 0L;
+    ofnExe.lpfnHook = NULL;
+    ofnExe.lpTemplateName = NULL;
+
+    ofnIco.lStructSize = sizeof(OPENFILENAME);
+    ofnIco.hwndOwner = hwnd;
+    ofnIco.hInstance = NULL;
+    ofnIco.lpstrFilter = szFilterIco[0];
+    ofnIco.lpstrCustomFilter = NULL;
+    ofnIco.nMaxCustFilter = 0;
+    ofnIco.nFilterIndex = 0;
+    ofnIco.lpstrFile = NULL;
+    ofnIco.nMaxFile = _MAX_PATH;
+    ofnIco.lpstrFileTitle = NULL;
+    ofnIco.nMaxFileTitle = _MAX_FNAME + _MAX_EXT;
+    ofnIco.lpstrInitialDir = NULL;
+    ofnIco.lpstrTitle = NULL;
+    ofnIco.Flags = 0;
+    ofnIco.nFileOffset = 0;
+    ofnIco.nFileExtension = 0;
+    ofnIco.lpstrDefExt = "ico";
+    ofnIco.lCustData = 0L;
+    ofnIco.lpfnHook = NULL;
+    ofnIco.lpTemplateName = NULL;
+}
+
+
+
+BOOL PatchFileOpenDlg(HWND hwnd, LPSTR lpstrFileName, LPSTR lpstrTitleName){
+
+
+
+}
 
 
 #define MAIN_OK 1
