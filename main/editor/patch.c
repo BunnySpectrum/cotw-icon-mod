@@ -64,10 +64,26 @@ void PatchInit(HWND hwnd){
 
 
 
-BOOL PatchFileOpenDlg(HWND hwnd, LPSTR lpstrFileName, LPSTR lpstrTitleName){
+BOOL PatchFileOpenDlg(PatchFileId_e fileId, HWND hwnd, LPSTR lpstrFileName, LPSTR lpstrTitleName){
+    OPENFILENAME* pofn;
 
+    switch(fileId){
+        case kPatchFileExe:
+            pofn = &ofnExe;
+            break; 
+        case kPatchFileIco:
+            pofn = &ofnIco;
+            break;
+        default:
+            return FALSE;
+    }
 
+    pofn->hwndOwner = hwnd;
+    pofn->lpstrFile = lpstrFileName;
+    pofn->lpstrFileTitle = lpstrTitleName;
+    // pofn->Flags = 0;
 
+    return GetOpenFileName(pofn);
 }
 
 
