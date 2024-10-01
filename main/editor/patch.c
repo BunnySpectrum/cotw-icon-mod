@@ -90,9 +90,6 @@ BOOL PatchFileOpenDlg(PatchFileId_e fileId, HWND hwnd, LPSTR lpstrFileName, LPST
 #define MAIN_OK 1
 #define MAIN_ERR 0
 
-void test_run(int* inout){
-    *inout += 1;
-}
 
 //iconIndex is relative to the dirEntry
 void write_ico(bun_file_s *pExeFile, bun_file_s *pIconFile, groupIconDirEntry_t dirEntry, castleResourceType_t iconResource, nameInfo_t iconNameInfo){
