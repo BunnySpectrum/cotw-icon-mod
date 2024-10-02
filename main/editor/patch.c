@@ -189,11 +189,12 @@ int patch(int hfileExe, int hfileIcon, uint16_t* result){
     icon_file.mode_flags = OF_READ;
 
 
-    // exe_handle = _lopen(pofnExe->lpstrFile, OF_READ);
+    exe_handle = _lopen(ofnExe.lpstrFile, OF_READ);
     // exe_handle = file_open(&exe_file);
     // printf("EXE: %s\n", exePath);
-    // if (-1 == exe_handle){
-        // return -1;
+    if (-1 == exe_handle){
+        return -1;
+    }
     // }else{
         // return 2; XXX got here
     // }
@@ -202,12 +203,12 @@ int patch(int hfileExe, int hfileIcon, uint16_t* result){
     dosHeader.signature[0] = 1;
     dosHeader.signature[1] = 1;
     *result = 0x20;
-    _llseek(hfileExe, 0, SEEK_SET);
-    if(2 != _lread(hfileExe, (LPSTR)(result), 2)){
+    _llseek(exe_handle, 0, SEEK_SET);
+    if(2 != _lread(exe_handle, (LPSTR)(result), 2)){
         return -1;
     }
 
-    return hfileExe;
+    return exe_handle;
 
     dos_read_magic(&exe_file, &dosHeader);
     *result = ((uint16_t)dosHeader.signature[0] << 8) || (dosHeader.signature[1]);
