@@ -189,16 +189,15 @@ int patch(int hfileExe, int hfileIcon, uint16_t* result){
     icon_file.mode_flags = OF_READ;
 
 
-    exe_handle = _lopen(ofnExe.lpstrFile, OF_READ);
-    // exe_handle = file_open(&exe_file);
-    // printf("EXE: %s\n", exePath);
+    exe_handle = _lopen(ofnExe.lpstrFile, OF_READWRITE);
     if (-1 == exe_handle){
         return -1;
     }
-    // }else{
-        // return 2; XXX got here
-    // }
-    // exe_file.handle = exe_handle;
+    
+    icon_handle = _lopen(ofnIco.lpstrFile, OF_READ);
+    if (-1 == icon_handle){
+        return -2;
+    }
 
     dosHeader.signature[0] = 1;
     dosHeader.signature[1] = 1;
