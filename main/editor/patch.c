@@ -86,6 +86,14 @@ BOOL PatchFileOpenDlg(PatchFileId_e fileId, HWND hwnd, LPSTR lpstrFileName, LPST
     return GetOpenFileName(pofn);
 }
 
+BOOL PatchFileSaveDlg(HWND hwnd, LPSTR lpstrFileName, LPSTR lpstrTitleName){
+    ofnExe.hwndOwner = hwnd;
+    ofnExe.lpstrFile = lpstrFileName;
+    ofnExe.lpstrFileTitle = lpstrTitleName;
+    ofnExe.Flags = OFN_OVERWRITEPROMPT;
+
+    return GetSaveFileName(&ofnExe);
+}
 
 #define MAIN_OK 1
 #define MAIN_ERR 0

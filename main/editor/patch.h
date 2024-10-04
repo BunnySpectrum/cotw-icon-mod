@@ -20,5 +20,6 @@ int patch(int hfileExe, int hfileIcon, uint16_t* result);
 
 void PatchInit(HWND hwnd);
 BOOL PatchFileOpenDlg(PatchFileId_e fileId, HWND hwnd, LPSTR lpstrFileName, LPSTR lpstrTitleName);
+BOOL PatchFileSaveDlg(HWND hwnd, LPSTR lpstrFileName, LPSTR lpstrTitleName);
 
 #endif
