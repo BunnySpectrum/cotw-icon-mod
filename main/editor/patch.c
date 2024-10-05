@@ -95,6 +95,33 @@ BOOL PatchFileSaveDlg(HWND hwnd, LPSTR lpstrFileName, LPSTR lpstrTitleName){
     return GetSaveFileName(&ofnExe);
 }
 
+BOOL PatchFileReadExe(HWND hwnd, LPSTR lpstrFileName){
+    long lLength;
+    HANDLE hBuffer;
+    int hFile;
+    LPSTR lpstrBuffer;
+
+    if(-1 == (hFile = _lopen(lpstrFileName, OF_READ | OF_SHARE_DENY_WRITE))){
+        return FALSE;
+    }
+
+    lLength = 2;
+
+    if(NULL == (hBuffer = GlobalAlloc(GHND, lLength + 1))){
+        _lclose(hFile);
+        return FALSE;
+    }
+
+    lpstrBuffer = GlobalLock(hBuffer);
+    _lread(hFile, lpstrBuffer, lLength);
+    _lclose(hFile);
+    lpstrBuffer[(WORD) lLength] = '\0';
+
+    SetWindowText(hwnd, lpstrBuffer);
+    GlobalUnlock(hBuffer);
+    GlobalFree(hBuffer);
+}
+
 #define MAIN_OK 1
 #define MAIN_ERR 0
 
